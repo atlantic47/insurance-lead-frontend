@@ -1,6 +1,6 @@
 'use client';
 
-import { useState, useRef, useCallback } from 'react';
+import { useState, useRef, useCallback, useEffect } from 'react';
 import {
   Bold,
   Italic,
@@ -41,6 +41,18 @@ const RichTextEditor = ({
   const [isLinkModalOpen, setIsLinkModalOpen] = useState(false);
   const [linkUrl, setLinkUrl] = useState('');
   const [linkText, setLinkText] = useState('');
+  const [isUpdatingContent, setIsUpdatingContent] = useState(false);
+
+  // Handle external value changes without affecting cursor position
+  useEffect(() => {
+    if (editorRef.current && !isUpdatingContent) {
+      const currentContent = editorRef.current.innerHTML;
+      // Only update if the editor is completely empty and we have external content
+      if (currentContent === '' && value !== '') {
+        editorRef.current.innerHTML = value;
+      }
+    }
+  }, [value, isUpdatingContent]);
 
   const executeCommand = useCallback((command: string, value?: string) => {
     document.execCommand(command, false, value);
@@ -50,10 +62,12 @@ const RichTextEditor = ({
   }, [onChange]);
 
   const handleContentChange = useCallback(() => {
-    if (editorRef.current) {
+    if (editorRef.current && !isUpdatingContent) {
+      setIsUpdatingContent(true);
       onChange(editorRef.current.innerHTML);
+      setTimeout(() => setIsUpdatingContent(false), 0);
     }
-  }, [onChange]);
+  }, [onChange, isUpdatingContent]);
 
   const insertImage = useCallback(() => {
     fileInputRef.current?.click();
@@ -275,10 +289,16 @@ const RichTextEditor = ({
         ref={editorRef}
         contentEditable
         onInput={handleContentChange}
+        onKeyDown={(e) => {
+          // Prevent default behavior that might interfere with typing
+          if (e.key === 'Backspace' || e.key === 'Delete') {
+            // Let default behavior handle deletion
+          }
+        }}
         className="p-4 focus:outline-none prose prose-neutral max-w-none"
-        style={{ minHeight }}
-        dangerouslySetInnerHTML={{ __html: value }}
+        style={{ minHeight, direction: 'ltr' }}
         data-placeholder={placeholder}
+        suppressContentEditableWarning={true}
       />
 
       {/* Hidden file input for images */}

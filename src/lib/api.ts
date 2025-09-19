@@ -126,6 +126,7 @@ export const emailApi = {
   fetchEmails: () => api.post('/email/fetch'),
   testConnection: () => api.post('/email/test-connection'),
   webhookFetch: () => api.post('/email/webhook/fetch'),
+  getContacts: (search?: string) => api.get('/email/contacts', { params: { search } }),
 };
 
 export const reportsApi = {

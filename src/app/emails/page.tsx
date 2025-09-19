@@ -2,11 +2,14 @@
 
 import React, { useState, useEffect } from 'react';
 import DashboardLayout from '@/components/layout/DashboardLayout';
-import { Mail, Send, Reply, Archive, Trash2, Search, Filter, Plus, MoreVertical, Paperclip, Star, Clock, User } from 'lucide-react';
+import { Mail, Send, Reply, Archive, Trash2, Search, Filter, Plus, MoreVertical, Paperclip, Star, Clock, User, Forward } from 'lucide-react';
 import RichTextEditor from '@/components/email/RichTextEditor';
+import EmailMultiSelect from '@/components/email/EmailMultiSelect';
+import { emailApi } from '@/lib/api';
 
 interface EmailMessage {
   id: string;
+  messageId?: string;
   subject: string;
   content: string;
   fromEmail: string;
@@ -29,9 +32,18 @@ interface EmailMessage {
 export default function EmailsPage() {
   const [emails, setEmails] = useState<EmailMessage[]>([]);
   const [selectedEmail, setSelectedEmail] = useState<EmailMessage | null>(null);
+  const [emailThread, setEmailThread] = useState<EmailMessage[]>([]);
   const [isLoading, setIsLoading] = useState(true);
+  const [isLoadingThread, setIsLoadingThread] = useState(false);
   const [showCompose, setShowCompose] = useState(false);
+  const [showReply, setShowReply] = useState(false);
+  const [showForward, setShowForward] = useState(false);
   const [replyContent, setReplyContent] = useState('');
+  const [replyCC, setReplyCC] = useState<string[]>([]);
+  const [replyBCC, setReplyBCC] = useState<string[]>([]);
+  const [showCCBCC, setShowCCBCC] = useState(false);
+  const [replyAttachments, setReplyAttachments] = useState<File[]>([]);
+  const [emailContacts, setEmailContacts] = useState<any[]>([]);
   const [searchTerm, setSearchTerm] = useState('');
   const [directionFilter, setDirectionFilter] = useState<'ALL' | 'INBOUND' | 'OUTBOUND'>('ALL');
   const [readFilter, setReadFilter] = useState<'ALL' | 'READ' | 'unread'>('ALL');
@@ -41,81 +53,92 @@ export default function EmailsPage() {
     toEmail: '',
     subject: '',
     content: '',
+    ccEmails: [] as string[],
+    bccEmails: [] as string[],
   });
+  const [showComposeCCBCC, setShowComposeCCBCC] = useState(false);
+
+  // Forward email form
+  const [forwardForm, setForwardForm] = useState({
+    toEmail: '',
+    ccEmails: [] as string[],
+    bccEmails: [] as string[],
+    content: '',
+  });
+  const [showForwardCCBCC, setShowForwardCCBCC] = useState(false);
 
   useEffect(() => {
     fetchEmails();
+    fetchEmailContacts();
   }, [directionFilter, readFilter]);
+
+  const fetchEmailContacts = async () => {
+    try {
+      const response = await emailApi.getContacts();
+      setEmailContacts(response.data || []);
+    } catch (error: any) {
+      console.error('Error fetching email contacts:', error);
+      if (error.response?.status === 401) {
+        // User not authenticated - contacts will be empty
+        setEmailContacts([]);
+      } else {
+        setEmailContacts([]);
+      }
+    }
+  };
+
+  const fetchEmailThread = async (threadId: string) => {
+    if (!threadId) {
+      setEmailThread([]);
+      return;
+    }
+
+    try {
+      setIsLoadingThread(true);
+      const response = await emailApi.getThread(threadId);
+      // Sort emails by creation date (oldest first for thread view)
+      const sortedThread = (response.data || []).sort((a: EmailMessage, b: EmailMessage) => 
+        new Date(a.createdAt).getTime() - new Date(b.createdAt).getTime()
+      );
+      setEmailThread(sortedThread);
+    } catch (error: any) {
+      console.error('Error fetching email thread:', error);
+      setEmailThread([]);
+    } finally {
+      setIsLoadingThread(false);
+    }
+  };
 
   const fetchEmails = async () => {
     try {
       setIsLoading(true);
-      // Mock data for now
-      const mockEmails: EmailMessage[] = [
-        {
-          id: '1',
-          subject: 'Inquiry about Home Insurance',
-          content: '<p>Hi,</p><p>I am interested in getting a quote for <strong>home insurance</strong>. My property is located in the downtown area and I need comprehensive coverage.</p><p>Could you please provide me with:</p><ul><li>Coverage options available</li><li>Premium estimates</li><li>Policy terms and conditions</li></ul><p>Thank you for your time.</p><p><em>Best regards,<br>Alice</em></p>',
-          fromEmail: 'customer@example.com',
-          toEmail: 'info@insurance.com',
-          direction: 'INBOUND',
-          isRead: false,
-          createdAt: new Date().toISOString(),
-          threadId: 'thread_1',
-          lead: {
-            id: '1',
-            firstName: 'Alice',
-            lastName: 'Johnson',
-            email: 'customer@example.com',
-            phone: '+1234567890',
-            status: 'NEW',
-          },
-        },
-        {
-          id: '2',
-          subject: 'Re: Inquiry about Home Insurance',
-          content: '<p>Dear Alice,</p><p>Thank you for your inquiry! I would be <strong>happy to help</strong> you with a home insurance quote.</p><p>To provide you with the most accurate quote, could you please provide more details about your property:</p><ol><li>Property type (house, condo, townhouse)</li><li>Year built</li><li>Square footage</li><li>Current estimated value</li></ol><p>I look forward to helping you find the perfect coverage!</p><p>Best regards,<br><em>Insurance Team</em></p>',
-          fromEmail: 'info@insurance.com',
-          toEmail: 'customer@example.com',
-          direction: 'OUTBOUND',
-          isRead: true,
-          createdAt: new Date(Date.now() - 3600000).toISOString(),
-          threadId: 'thread_1',
-          lead: {
-            id: '1',
-            firstName: 'Alice',
-            lastName: 'Johnson',
-            email: 'customer@example.com',
-            phone: '+1234567890',
-            status: 'CONTACTED',
-          },
-        },
-        {
-          id: '3',
-          subject: 'Business Insurance Quote Request',
-          content: '<p>Hello,</p><p>I run a <strong>small retail business</strong> and need liability insurance. Can you provide me with a quote?</p><blockquote>Our business has been operating for 3 years and we\'re looking for comprehensive coverage.</blockquote><p>Thank you!</p>',
-          fromEmail: 'business@example.com',
-          toEmail: 'info@insurance.com',
-          direction: 'INBOUND',
-          isRead: true,
-          readAt: new Date().toISOString(),
-          createdAt: new Date(Date.now() - 7200000).toISOString(),
-          lead: {
-            id: '2',
-            firstName: 'Bob',
-            lastName: 'Smith',
-            email: 'business@example.com',
-            status: 'ENGAGED',
-          },
-        },
-      ];
       
-      setEmails(mockEmails);
-      if (mockEmails.length > 0 && !selectedEmail) {
-        setSelectedEmail(mockEmails[0]);
+      // Build query parameters based on filters
+      const params: Record<string, unknown> = {
+        page: 1,
+        limit: 100, // Get more emails for better UX
+      };
+      
+      if (directionFilter !== 'ALL') {
+        params.direction = directionFilter;
+      }
+      
+      if (readFilter !== 'ALL') {
+        params.isRead = readFilter === 'READ';
+      }
+
+      // Fetch emails from API
+      const response = await emailApi.getAll(params);
+      const fetchedEmails = response.data.emails || [];
+      
+      setEmails(fetchedEmails);
+      if (fetchedEmails.length > 0 && !selectedEmail) {
+        setSelectedEmail(fetchedEmails[0]);
       }
     } catch (error) {
       console.error('Error fetching emails:', error);
+      // Show empty state instead of error
+      setEmails([]);
     } finally {
       setIsLoading(false);
     }
@@ -123,12 +146,19 @@ export default function EmailsPage() {
 
   const markAsRead = async (emailId: string) => {
     try {
+      // Optimistically update UI
       setEmails(prev => prev.map(email => 
         email.id === emailId ? { ...email, isRead: true, readAt: new Date().toISOString() } : email
       ));
-      // API call would go here
+      
+      // Update on server
+      await emailApi.markAsRead(emailId);
     } catch (error) {
       console.error('Error marking email as read:', error);
+      // Revert optimistic update
+      setEmails(prev => prev.map(email => 
+        email.id === emailId ? { ...email, isRead: false, readAt: undefined } : email
+      ));
     }
   };
 
@@ -137,26 +167,43 @@ export default function EmailsPage() {
     if (!textContent || !selectedEmail) return;
 
     try {
-      const replyEmail: EmailMessage = {
-        id: Date.now().toString(),
+      const replyData = {
+        toEmail: selectedEmail.fromEmail,
         subject: selectedEmail.subject.startsWith('Re:') ? selectedEmail.subject : `Re: ${selectedEmail.subject}`,
         content: replyContent,
-        fromEmail: 'info@insurance.com',
-        toEmail: selectedEmail.fromEmail,
-        direction: 'OUTBOUND',
-        isRead: true,
-        createdAt: new Date().toISOString(),
+        inReplyTo: selectedEmail.messageId || selectedEmail.id, // Use messageId if available, fallback to id
         threadId: selectedEmail.threadId,
-        lead: selectedEmail.lead,
+        leadId: selectedEmail.lead?.id,
+        ccEmails: replyCC.length > 0 ? replyCC : undefined,
+        bccEmails: replyBCC.length > 0 ? replyBCC : undefined,
       };
 
-      setEmails(prev => [replyEmail, ...prev]);
-      setReplyContent('');
+      console.log('Sending reply with data:', replyData);
+
+      // Send reply via API
+      const response = await emailApi.send(replyData);
+      console.log('Reply sent successfully:', response);
       
-      // API call would go here
-      console.log('Sending reply:', replyEmail);
-    } catch (error) {
+      // Clear reply content and CC/BCC
+      setReplyContent('');
+      setReplyCC([]);
+      setReplyBCC([]);
+      setShowCCBCC(false);
+      setShowReply(false);
+      
+      // Refresh emails to show the sent reply
+      await fetchEmails();
+      
+    } catch (error: any) {
       console.error('Error sending reply:', error);
+      if (error.response?.status === 401) {
+        alert('Authentication required. Please log in first.');
+        window.location.href = '/login';
+      } else if (error.response?.status === 403) {
+        alert('You do not have permission to send emails.');
+      } else {
+        alert(`Failed to send reply: ${error.response?.data?.message || error.message || 'Unknown error'}`);
+      }
     }
   };
 
@@ -165,25 +212,57 @@ export default function EmailsPage() {
     if (!composeForm.toEmail || !composeForm.subject || !textContent) return;
 
     try {
-      const newEmail: EmailMessage = {
-        id: Date.now().toString(),
+      const emailData = {
+        toEmail: composeForm.toEmail,
         subject: composeForm.subject,
         content: composeForm.content,
-        fromEmail: 'info@insurance.com',
-        toEmail: composeForm.toEmail,
-        direction: 'OUTBOUND',
-        isRead: true,
-        createdAt: new Date().toISOString(),
+        ccEmails: composeForm.ccEmails.length > 0 ? composeForm.ccEmails : undefined,
+        bccEmails: composeForm.bccEmails.length > 0 ? composeForm.bccEmails : undefined,
       };
 
-      setEmails(prev => [newEmail, ...prev]);
-      setComposeForm({ toEmail: '', subject: '', content: '' });
-      setShowCompose(false);
+      // Send email via API
+      await emailApi.send(emailData);
       
-      // API call would go here
-      console.log('Sending new email:', newEmail);
+      // Reset form and close modal
+      setComposeForm({ toEmail: '', subject: '', content: '', ccEmails: [], bccEmails: [] });
+      setShowCompose(false);
+      setShowComposeCCBCC(false);
+      
+      // Refresh emails to show the sent email
+      await fetchEmails();
+      
     } catch (error) {
       console.error('Error sending email:', error);
+    }
+  };
+
+  const sendForward = async () => {
+    const textContent = forwardForm.content.replace(/<[^>]*>/g, '').trim();
+    if (!forwardForm.toEmail || !selectedEmail || !textContent) return;
+
+    try {
+      const forwardData = {
+        toEmail: forwardForm.toEmail,
+        subject: selectedEmail.subject.startsWith('Fwd:') ? selectedEmail.subject : `Fwd: ${selectedEmail.subject}`,
+        content: forwardForm.content,
+        leadId: selectedEmail.lead?.id,
+        ccEmails: forwardForm.ccEmails.length > 0 ? forwardForm.ccEmails : undefined,
+        bccEmails: forwardForm.bccEmails.length > 0 ? forwardForm.bccEmails : undefined,
+      };
+
+      // Send forward via API
+      await emailApi.send(forwardData);
+      
+      // Reset form and close modal
+      setForwardForm({ toEmail: '', ccEmails: [], bccEmails: [], content: '' });
+      setShowForward(false);
+      setShowForwardCCBCC(false);
+      
+      // Refresh emails to show the forwarded email
+      await fetchEmails();
+      
+    } catch (error) {
+      console.error('Error forwarding email:', error);
     }
   };
 
@@ -194,7 +273,7 @@ export default function EmailsPage() {
     
     const matchesDirection = directionFilter === 'ALL' || email.direction === directionFilter;
     const matchesRead = readFilter === 'ALL' || 
-                       (readFilter === 'read' && email.isRead) ||
+                       (readFilter === 'READ' && email.isRead) ||
                        (readFilter === 'unread' && !email.isRead);
     
     return matchesSearch && matchesDirection && matchesRead;
@@ -202,6 +281,58 @@ export default function EmailsPage() {
 
   const formatDate = (timestamp: string) => {
     return new Date(timestamp).toLocaleString();
+  };
+
+  const stripHtml = (html: string) => {
+    return html.replace(/<[^>]*>/g, '').replace(/&[^;]+;/g, ' ').trim();
+  };
+
+  const openReplyModal = (email?: EmailMessage) => {
+    // Use the latest email in the thread for reply context
+    const emailToReply = email || (emailThread.length > 0 ? emailThread[emailThread.length - 1] : selectedEmail);
+    if (emailToReply) {
+      setSelectedEmail(emailToReply);
+      setReplyContent('');
+      setReplyCC([]);
+      setReplyBCC([]);
+      setReplyAttachments([]);
+      setShowCCBCC(false);
+      setShowReply(true);
+    }
+  };
+
+  const handleAttachmentUpload = (event: React.ChangeEvent<HTMLInputElement>) => {
+    const files = Array.from(event.target.files || []);
+    setReplyAttachments(prev => [...prev, ...files]);
+  };
+
+  const removeAttachment = (index: number) => {
+    setReplyAttachments(prev => prev.filter((_, i) => i !== index));
+  };
+
+  const openForwardModal = (email?: EmailMessage) => {
+    // Use the latest email in the thread for forward context
+    const emailToForward = email || (emailThread.length > 0 ? emailThread[emailThread.length - 1] : selectedEmail);
+    if (emailToForward) {
+      setSelectedEmail(emailToForward);
+      const forwardContent = `
+        <br><br>
+        ---------- Forwarded message ----------<br>
+        <strong>From:</strong> ${emailToForward.fromEmail}<br>
+        <strong>To:</strong> ${emailToForward.toEmail}<br>
+        <strong>Subject:</strong> ${emailToForward.subject}<br>
+        <strong>Date:</strong> ${formatDate(emailToForward.createdAt)}<br><br>
+        ${emailToForward.content}
+      `;
+      setForwardForm({
+        toEmail: '',
+        ccEmails: [],
+        bccEmails: [],
+        content: forwardContent,
+      });
+      setShowForwardCCBCC(false);
+      setShowForward(true);
+    }
   };
 
   if (isLoading) {
@@ -278,7 +409,7 @@ export default function EmailsPage() {
                   className="flex-1"
                 >
                   <option value="ALL">All</option>
-                  <option value="read">Read</option>
+                  <option value="READ">Read</option>
                   <option value="unread">Unread</option>
                 </select>
               </div>
@@ -291,6 +422,11 @@ export default function EmailsPage() {
                     key={email.id}
                     onClick={() => {
                       setSelectedEmail(email);
+                      if (email.threadId) {
+                        fetchEmailThread(email.threadId);
+                      } else {
+                        setEmailThread([email]); // If no thread, just show this email
+                      }
                       if (!email.isRead) {
                         markAsRead(email.id);
                       }
@@ -355,7 +491,7 @@ export default function EmailsPage() {
                         )}
                         
                         <p className="text-xs text-neutral-500 truncate">
-                          {email.content}
+                          {stripHtml(email.content)}
                         </p>
                       </div>
                     </div>
@@ -399,8 +535,19 @@ export default function EmailsPage() {
                       <button className="btn btn-ghost btn-sm">
                         <Star className="w-4 h-4" />
                       </button>
-                      <button className="btn btn-ghost btn-sm">
+                      <button 
+                        onClick={() => openReplyModal()}
+                        className="btn btn-ghost btn-sm"
+                        title="Reply"
+                      >
                         <Reply className="w-4 h-4" />
+                      </button>
+                      <button 
+                        onClick={() => openForwardModal()}
+                        className="btn btn-ghost btn-sm"
+                        title="Forward"
+                      >
+                        <Send className="w-4 h-4" />
                       </button>
                       <button className="btn btn-ghost btn-sm">
                         <Archive className="w-4 h-4" />
@@ -435,55 +582,90 @@ export default function EmailsPage() {
                   )}
                 </div>
 
-                {/* Email Content */}
+                {/* Email Thread Content */}
                 <div className="flex-1 overflow-y-auto custom-scrollbar p-6">
-                  <div className="prose prose-neutral max-w-none">
-                    <div 
-                      className="text-neutral-700 leading-relaxed"
-                      dangerouslySetInnerHTML={{ __html: selectedEmail.content }}
-                    />
-                  </div>
+                  {isLoadingThread ? (
+                    <div className="flex items-center justify-center h-32">
+                      <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-blue-600"></div>
+                    </div>
+                  ) : emailThread.length > 0 ? (
+                    <div className="space-y-6">
+                      {emailThread.map((email, index) => (
+                        <div 
+                          key={email.id}
+                          className={`border rounded-lg p-4 ${
+                            email.id === selectedEmail?.id 
+                              ? 'border-primary-300 bg-primary-25' 
+                              : 'border-neutral-200 bg-white'
+                          }`}
+                        >
+                          {/* Email Header */}
+                          <div className="flex items-center justify-between mb-3 pb-3 border-b border-neutral-100">
+                            <div className="flex items-center space-x-3">
+                              <div className={`w-8 h-8 rounded-full flex items-center justify-center text-sm font-semibold ${
+                                email.direction === 'INBOUND' 
+                                  ? 'bg-success-100 text-success-700' 
+                                  : 'bg-primary-100 text-primary-700'
+                              }`}>
+                                {email.direction === 'INBOUND' ? 'IN' : 'OUT'}
+                              </div>
+                              <div>
+                                <div className="font-medium text-sm text-neutral-900">
+                                  {email.direction === 'INBOUND' ? `From: ${email.fromEmail}` : `To: ${email.toEmail}`}
+                                </div>
+                                <div className="text-xs text-neutral-500 flex items-center">
+                                  <Clock className="w-3 h-3 mr-1" />
+                                  {formatDate(email.createdAt)}
+                                  {!email.isRead && email.direction === 'INBOUND' && (
+                                    <span className="ml-2 px-2 py-0.5 bg-primary-100 text-primary-700 text-xs rounded-full">
+                                      Unread
+                                    </span>
+                                  )}
+                                </div>
+                              </div>
+                            </div>
+                            <div className="flex items-center space-x-2">
+                              {index === emailThread.length - 1 && (
+                                <>
+                                  <button 
+                                    onClick={() => openReplyModal(email)}
+                                    className="btn btn-ghost btn-sm"
+                                    title="Reply to this message"
+                                  >
+                                    <Reply className="w-4 h-4" />
+                                  </button>
+                                  <button 
+                                    onClick={() => openForwardModal(email)}
+                                    className="btn btn-ghost btn-sm"
+                                    title="Forward this message"
+                                  >
+                                    <Send className="w-4 h-4" />
+                                  </button>
+                                </>
+                              )}
+                            </div>
+                          </div>
+                          
+                          {/* Email Content */}
+                          <div className="prose prose-neutral max-w-none prose-sm">
+                            <div 
+                              className="text-neutral-700 leading-relaxed"
+                              dangerouslySetInnerHTML={{ __html: email.content }}
+                            />
+                          </div>
+                        </div>
+                      ))}
+                    </div>
+                  ) : selectedEmail ? (
+                    <div className="prose prose-neutral max-w-none">
+                      <div 
+                        className="text-neutral-700 leading-relaxed"
+                        dangerouslySetInnerHTML={{ __html: selectedEmail.content }}
+                      />
+                    </div>
+                  ) : null}
                 </div>
 
-                {/* Reply Section */}
-                <div className="card-footer">
-                  <div className="space-y-4">
-                    <div className="flex items-center justify-between">
-                      <label className="text-sm font-medium text-neutral-700">
-                        Reply to this email
-                      </label>
-                    </div>
-                    
-                    <RichTextEditor
-                      value={replyContent}
-                      onChange={setReplyContent}
-                      placeholder="Type your reply..."
-                      minHeight="150px"
-                    />
-                    
-                    <div className="flex items-center justify-between">
-                      <div className="flex items-center space-x-2">
-                        <button className="btn btn-ghost btn-sm">
-                          <Paperclip className="w-4 h-4 mr-2" />
-                          Attach File
-                        </button>
-                      </div>
-                      <div className="flex items-center space-x-2">
-                        <button className="btn btn-secondary">
-                          Save Draft
-                        </button>
-                        <button
-                          onClick={sendReply}
-                          disabled={!replyContent.replace(/<[^>]*>/g, '').trim()}
-                          className="btn btn-primary"
-                        >
-                          <Send className="w-4 h-4 mr-2" />
-                          Send Reply
-                        </button>
-                      </div>
-                    </div>
-                  </div>
-                </div>
               </>
             ) : (
               <div className="flex-1 flex items-center justify-center">
@@ -502,8 +684,14 @@ export default function EmailsPage() {
 
       {/* Compose Modal */}
       {showCompose && (
-        <div className="fixed inset-0 bg-black/50 backdrop-blur-sm flex items-center justify-center z-50 fade-in">
-          <div className="card w-full max-w-3xl mx-4 max-h-[90vh] overflow-hidden">
+        <div 
+          className="fixed inset-0 bg-black/60 flex items-center justify-center z-50 fade-in"
+          onClick={() => setShowCompose(false)}
+        >
+          <div 
+            className="card w-full max-w-3xl mx-4 max-h-[90vh] overflow-hidden bg-white shadow-2xl border border-neutral-200"
+            onClick={(e) => e.stopPropagation()}
+          >
             <div className="card-header">
               <div className="flex items-center justify-between">
                 <div className="flex items-center space-x-3">
@@ -524,9 +712,18 @@ export default function EmailsPage() {
             <div className="card-body overflow-y-auto custom-scrollbar">
               <div className="space-y-4">
                 <div>
-                  <label className="block text-sm font-medium text-neutral-700 mb-2">
-                    To
-                  </label>
+                  <div className="flex items-center justify-between mb-2">
+                    <label className="block text-sm font-medium text-neutral-700">
+                      To
+                    </label>
+                    <button
+                      type="button"
+                      onClick={() => setShowComposeCCBCC(!showComposeCCBCC)}
+                      className="text-sm text-primary-600 hover:text-primary-700"
+                    >
+                      CC/BCC
+                    </button>
+                  </div>
                   <input
                     type="email"
                     value={composeForm.toEmail}
@@ -535,6 +732,26 @@ export default function EmailsPage() {
                     className="w-full"
                   />
                 </div>
+
+                {/* CC/BCC Fields for Compose */}
+                {showComposeCCBCC && (
+                  <div className="space-y-3 p-3 bg-neutral-50 rounded-lg">
+                    <EmailMultiSelect
+                      label="CC"
+                      selectedEmails={composeForm.ccEmails}
+                      onSelectionChange={(emails) => setComposeForm(prev => ({ ...prev, ccEmails: emails }))}
+                      placeholder="CC recipients..."
+                      availableContacts={emailContacts}
+                    />
+                    <EmailMultiSelect
+                      label="BCC"
+                      selectedEmails={composeForm.bccEmails}
+                      onSelectionChange={(emails) => setComposeForm(prev => ({ ...prev, bccEmails: emails }))}
+                      placeholder="BCC recipients..."
+                      availableContacts={emailContacts}
+                    />
+                  </div>
+                )}
                 
                 <div>
                   <label className="block text-sm font-medium text-neutral-700 mb-2">
@@ -549,7 +766,7 @@ export default function EmailsPage() {
                   />
                 </div>
                 
-                <div>
+                <div className="relative z-20">
                   <label className="block text-sm font-medium text-neutral-700 mb-2">
                     Message
                   </label>
@@ -563,7 +780,7 @@ export default function EmailsPage() {
               </div>
             </div>
             
-            <div className="card-footer">
+            <div className="card-footer flex-shrink-0">
               <div className="flex items-center justify-between">
                 <div className="flex items-center space-x-2">
                   <button className="btn btn-ghost btn-sm">
@@ -588,6 +805,293 @@ export default function EmailsPage() {
                   >
                     <Send className="w-4 h-4 mr-2" />
                     Send Email
+                  </button>
+                </div>
+              </div>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* Reply Modal */}
+      {showReply && selectedEmail && (
+        <div 
+          className="fixed inset-0 bg-black/60 flex items-center justify-center z-50 fade-in"
+          onClick={() => setShowReply(false)}
+        >
+          <div 
+            className="card w-full max-w-4xl mx-4 max-h-[90vh] bg-white shadow-2xl border border-neutral-200 flex flex-col"
+            onClick={(e) => e.stopPropagation()}
+          >
+            <div className="card-header">
+              <div className="flex items-center justify-between">
+                <div className="flex items-center space-x-3">
+                  <div className="w-8 h-8 bg-success-100 text-success-600 rounded-lg flex items-center justify-center">
+                    <Reply className="w-4 h-4" />
+                  </div>
+                  <h3 className="text-lg font-semibold text-neutral-900">Reply to Email</h3>
+                </div>
+                <button
+                  onClick={() => setShowReply(false)}
+                  className="btn btn-ghost btn-sm"
+                >
+                  ×
+                </button>
+              </div>
+            </div>
+            
+            <div className="card-body overflow-y-auto custom-scrollbar relative flex-1">
+              <div className="space-y-4">
+                <div>
+                  <div className="flex items-center justify-between mb-2">
+                    <label className="block text-sm font-medium text-neutral-700">
+                      To: {selectedEmail.fromEmail}
+                    </label>
+                    <button
+                      type="button"
+                      onClick={() => setShowCCBCC(!showCCBCC)}
+                      className="text-sm text-primary-600 hover:text-primary-700"
+                    >
+                      CC/BCC
+                    </button>
+                  </div>
+                </div>
+
+                {/* CC/BCC Fields for Reply */}
+                {showCCBCC && (
+                  <div className="space-y-3 p-3 bg-neutral-50 rounded-lg">
+                    <EmailMultiSelect
+                      label="CC"
+                      selectedEmails={replyCC}
+                      onSelectionChange={setReplyCC}
+                      placeholder="CC recipients..."
+                      availableContacts={emailContacts}
+                    />
+                    <EmailMultiSelect
+                      label="BCC"
+                      selectedEmails={replyBCC}
+                      onSelectionChange={setReplyBCC}
+                      placeholder="BCC recipients..."
+                      availableContacts={emailContacts}
+                    />
+                  </div>
+                )}
+                
+                <div>
+                  <label className="block text-sm font-medium text-neutral-700 mb-2">
+                    Subject: Re: {selectedEmail.subject.replace(/^Re:\s*/i, '')}
+                  </label>
+                </div>
+                
+                <div className="relative">
+                  <label className="block text-sm font-medium text-neutral-700 mb-2">
+                    Message
+                  </label>
+                  <RichTextEditor
+                    value={replyContent}
+                    onChange={setReplyContent}
+                    placeholder="Type your reply here..."
+                    minHeight="200px"
+                  />
+                </div>
+
+                {/* Attachments Preview */}
+                {replyAttachments.length > 0 && (
+                  <div className="p-3 bg-neutral-50 rounded-lg border">
+                    <h4 className="text-sm font-medium text-neutral-700 mb-2">Attachments ({replyAttachments.length})</h4>
+                    <div className="space-y-2">
+                      {replyAttachments.map((file, index) => (
+                        <div key={index} className="flex items-center justify-between bg-white p-2 rounded border">
+                          <div className="flex items-center space-x-2">
+                            <Paperclip className="w-4 h-4 text-neutral-500" />
+                            <span className="text-sm text-neutral-700">{file.name}</span>
+                            <span className="text-xs text-neutral-500">({(file.size / 1024).toFixed(1)} KB)</span>
+                          </div>
+                          <button
+                            onClick={() => removeAttachment(index)}
+                            className="text-red-500 hover:text-red-700 text-sm"
+                          >
+                            ×
+                          </button>
+                        </div>
+                      ))}
+                    </div>
+                  </div>
+                )}
+
+                {/* Original Email Content */}
+                <div className="border-l-4 border-neutral-300 pl-4 py-3 bg-neutral-50 rounded-r-lg">
+                  <div className="text-sm text-neutral-500 mb-2 font-medium">
+                    On {formatDate(selectedEmail.createdAt)}, {selectedEmail.fromEmail} wrote:
+                  </div>
+                  <div className="text-sm text-neutral-600 max-h-60 overflow-y-auto">
+                    <div dangerouslySetInnerHTML={{ __html: selectedEmail.content }} />
+                  </div>
+                </div>
+              </div>
+            </div>
+            
+            <div className="card-footer flex-shrink-0">
+              <div className="flex items-center justify-between">
+                <div className="flex items-center space-x-2">
+                  <input
+                    type="file"
+                    multiple
+                    onChange={handleAttachmentUpload}
+                    className="hidden"
+                    id="reply-file-input"
+                  />
+                  <label htmlFor="reply-file-input" className="btn btn-ghost btn-sm cursor-pointer">
+                    <Paperclip className="w-4 h-4 mr-2" />
+                    Attach File
+                  </label>
+                  {replyAttachments.length > 0 && (
+                    <span className="text-sm text-neutral-600">
+                      {replyAttachments.length} file(s) attached
+                    </span>
+                  )}
+                </div>
+                <div className="flex items-center space-x-3">
+                  <button
+                    onClick={() => setShowReply(false)}
+                    className="btn btn-secondary"
+                  >
+                    Cancel
+                  </button>
+                  <button className="btn btn-ghost">
+                    Save Draft
+                  </button>
+                  <button
+                    onClick={sendReply}
+                    disabled={!replyContent.replace(/<[^>]*>/g, '').trim()}
+                    className="btn btn-primary"
+                  >
+                    <Send className="w-4 h-4 mr-2" />
+                    Send Reply
+                  </button>
+                </div>
+              </div>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* Forward Modal */}
+      {showForward && selectedEmail && (
+        <div 
+          className="fixed inset-0 bg-black/60 flex items-center justify-center z-50 fade-in"
+          onClick={() => setShowForward(false)}
+        >
+          <div 
+            className="card w-full max-w-4xl mx-4 max-h-[90vh] bg-white shadow-2xl border border-neutral-200 flex flex-col"
+            onClick={(e) => e.stopPropagation()}
+          >
+            <div className="card-header">
+              <div className="flex items-center justify-between">
+                <div className="flex items-center space-x-3">
+                  <div className="w-8 h-8 bg-primary-100 text-primary-600 rounded-lg flex items-center justify-center">
+                    <Send className="w-4 h-4" />
+                  </div>
+                  <h3 className="text-lg font-semibold text-neutral-900">Forward Email</h3>
+                </div>
+                <button
+                  onClick={() => setShowForward(false)}
+                  className="btn btn-ghost btn-sm"
+                >
+                  ×
+                </button>
+              </div>
+            </div>
+            
+            <div className="card-body overflow-y-auto custom-scrollbar flex-1">
+              <div className="space-y-4">
+                <div>
+                  <div className="flex items-center justify-between mb-2">
+                    <label className="block text-sm font-medium text-neutral-700">
+                      To
+                    </label>
+                    <button
+                      type="button"
+                      onClick={() => setShowForwardCCBCC(!showForwardCCBCC)}
+                      className="text-sm text-primary-600 hover:text-primary-700"
+                    >
+                      CC/BCC
+                    </button>
+                  </div>
+                  <input
+                    type="email"
+                    value={forwardForm.toEmail}
+                    onChange={(e) => setForwardForm(prev => ({ ...prev, toEmail: e.target.value }))}
+                    placeholder="Enter recipient email address"
+                    className="w-full"
+                  />
+                </div>
+
+                {/* CC/BCC Fields for Forward */}
+                {showForwardCCBCC && (
+                  <div className="space-y-3 p-3 bg-neutral-50 rounded-lg">
+                    <EmailMultiSelect
+                      label="CC"
+                      selectedEmails={forwardForm.ccEmails}
+                      onSelectionChange={(emails) => setForwardForm(prev => ({ ...prev, ccEmails: emails }))}
+                      placeholder="CC recipients..."
+                      availableContacts={emailContacts}
+                    />
+                    <EmailMultiSelect
+                      label="BCC"
+                      selectedEmails={forwardForm.bccEmails}
+                      onSelectionChange={(emails) => setForwardForm(prev => ({ ...prev, bccEmails: emails }))}
+                      placeholder="BCC recipients..."
+                      availableContacts={emailContacts}
+                    />
+                  </div>
+                )}
+                
+                <div>
+                  <label className="block text-sm font-medium text-neutral-700 mb-2">
+                    Subject: Fwd: {selectedEmail.subject.replace(/^Fwd:\s*/i, '')}
+                  </label>
+                </div>
+                
+                <div className="relative">
+                  <label className="block text-sm font-medium text-neutral-700 mb-2">
+                    Message
+                  </label>
+                  <RichTextEditor
+                    value={forwardForm.content}
+                    onChange={(content) => setForwardForm(prev => ({ ...prev, content }))}
+                    placeholder="Add your message (optional)..."
+                    minHeight="300px"
+                  />
+                </div>
+              </div>
+            </div>
+            
+            <div className="card-footer flex-shrink-0">
+              <div className="flex items-center justify-between">
+                <div className="flex items-center space-x-2">
+                  <button className="btn btn-ghost btn-sm">
+                    <Paperclip className="w-4 h-4 mr-2" />
+                    Attach File
+                  </button>
+                </div>
+                <div className="flex items-center space-x-3">
+                  <button
+                    onClick={() => setShowForward(false)}
+                    className="btn btn-secondary"
+                  >
+                    Cancel
+                  </button>
+                  <button className="btn btn-ghost">
+                    Save Draft
+                  </button>
+                  <button
+                    onClick={sendForward}
+                    disabled={!forwardForm.toEmail}
+                    className="btn btn-primary"
+                  >
+                    <Send className="w-4 h-4 mr-2" />
+                    Forward Email
                   </button>
                 </div>
               </div>
