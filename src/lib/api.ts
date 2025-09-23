@@ -89,8 +89,22 @@ export const usersApi = {
 
 export const aiApi = {
   getConversations: (params?: Record<string, unknown>) => api.get<PaginationResponse<AIConversation>>('/ai/conversations', { params }),
-  chat: (message: string, leadId?: string) => api.post<AIConversation>('/ai/chat', { message, leadId }),
+  chat: (message: string, leadId?: string) => api.post<AIConversation>('/ai/chatbot', { input: message, leadId }),
   analyzeSentiment: (text: string) => api.post('/ai/sentiment', { text }),
+  uploadTrainingFiles: (files: FileList, instructions: string) => {
+    const formData = new FormData();
+    Array.from(files).forEach(file => formData.append('files', file));
+    formData.append('instructions', instructions);
+    return api.post('/ai/training/upload', formData, {
+      headers: { 'Content-Type': 'multipart/form-data' }
+    });
+  },
+  scanUrl: (url: string, instructions: string) => api.post('/ai/training/scan-url', { url, instructions }),
+  saveUrl: (url: string, instructions: string) => api.post('/ai/training/scan-url', { url, instructions }), // Process URL immediately
+  submitTraining: (instructions: string, urls: string[]) => api.post('/ai/training/submit', { instructions, urls }),
+  testAi: (message: string) => api.post('/ai/training/test', { message }),
+  getTrainingData: () => api.get('/ai/training/data'),
+  deleteTrainingData: (id: string) => api.delete(`/ai/training/data/${id}`),
 };
 
 export const chatApi = {

@@ -37,7 +37,7 @@ export default function DashboardLayout({ children }: DashboardLayoutProps) {
   }
 
   return (
-    <div className="h-screen overflow-hidden">
+    <div className="min-h-screen">
       <TopNavigation />
       <div className="flex">
         <Sidebar />

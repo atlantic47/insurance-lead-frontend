@@ -342,6 +342,7 @@ textarea:hover {
   width: calc(100vw - 240px);
   overflow-x: hidden;
   position: relative;
+  max-height: calc(100vh - 56px);
 }
 
 /* Animation utilities */
