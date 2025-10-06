@@ -356,14 +356,14 @@ export default function EmailsPage() {
             </div>
             <div className="flex items-center space-x-3">
               <div className="relative">
-                <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 text-neutral-400 w-4 h-4" />
                 <input
                   type="text"
                   placeholder="Search emails..."
                   value={searchTerm}
                   onChange={(e) => setSearchTerm(e.target.value)}
-                  className="pl-10 pr-4 py-2 w-80 border border-neutral-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-primary-500 focus:border-transparent"
+                  className="pl-4 pr-10 py-2 w-80 border border-neutral-300 rounded-xl focus:outline-none focus:ring-2 focus:ring-primary-500 focus:border-transparent"
                 />
+                <Search className="absolute right-3 top-1/2 transform -translate-y-1/2 text-neutral-400 w-4 h-4" />
               </div>
               <button
                 onClick={() => setShowCompose(true)}
@@ -377,7 +377,7 @@ export default function EmailsPage() {
         </div>
       
       <div className="jira-page-content">
-        <div className="jira-content-card h-[calc(100vh-300px)] flex overflow-hidden">
+        <div className="jira-content-card h-[calc(100vh-300px)] flex overflow-hidden rounded-lg">
           {/* Email List */}
           <div className="w-96 border-r border-neutral-200 flex flex-col">
             <div className="card-header">
@@ -562,7 +562,7 @@ export default function EmailsPage() {
                   </div>
                   
                   {selectedEmail.lead && (
-                    <div className="p-3 bg-primary-50 border border-primary-200 rounded-lg">
+                    <div className="p-3 bg-primary-50 border border-primary-200 rounded-xl">
                       <div className="flex items-center space-x-2">
                         <User className="w-4 h-4 text-primary-600" />
                         <span className="font-medium text-primary-900">Lead Information:</span>
@@ -593,7 +593,7 @@ export default function EmailsPage() {
                       {emailThread.map((email, index) => (
                         <div 
                           key={email.id}
-                          className={`border rounded-lg p-4 ${
+                          className={`border rounded-xl p-4 ${
                             email.id === selectedEmail?.id 
                               ? 'border-primary-300 bg-primary-25' 
                               : 'border-neutral-200 bg-white'
@@ -689,13 +689,13 @@ export default function EmailsPage() {
           onClick={() => setShowCompose(false)}
         >
           <div 
-            className="card w-full max-w-3xl mx-4 max-h-[90vh] overflow-hidden bg-white shadow-2xl border border-neutral-200"
+            className="card w-full max-w-3xl mx-4 max-h-[90vh] overflow-hidden bg-white shadow-2xl border border-neutral-200 rounded-xl"
             onClick={(e) => e.stopPropagation()}
           >
             <div className="card-header">
               <div className="flex items-center justify-between">
                 <div className="flex items-center space-x-3">
-                  <div className="w-8 h-8 bg-primary-100 text-primary-600 rounded-lg flex items-center justify-center">
+                  <div className="w-8 h-8 bg-primary-100 text-primary-600 rounded-xl flex items-center justify-center">
                     <Mail className="w-4 h-4" />
                   </div>
                   <h3 className="text-lg font-semibold text-neutral-900">Compose New Email</h3>
@@ -735,7 +735,7 @@ export default function EmailsPage() {
 
                 {/* CC/BCC Fields for Compose */}
                 {showComposeCCBCC && (
-                  <div className="space-y-3 p-3 bg-neutral-50 rounded-lg">
+                  <div className="space-y-3 p-3 bg-neutral-50 rounded-xl">
                     <EmailMultiSelect
                       label="CC"
                       selectedEmails={composeForm.ccEmails}
@@ -820,13 +820,13 @@ export default function EmailsPage() {
           onClick={() => setShowReply(false)}
         >
           <div 
-            className="card w-full max-w-4xl mx-4 max-h-[90vh] bg-white shadow-2xl border border-neutral-200 flex flex-col"
+            className="card w-full max-w-4xl mx-4 max-h-[90vh] bg-white shadow-2xl border border-neutral-200 flex flex-col rounded-xl"
             onClick={(e) => e.stopPropagation()}
           >
             <div className="card-header">
               <div className="flex items-center justify-between">
                 <div className="flex items-center space-x-3">
-                  <div className="w-8 h-8 bg-success-100 text-success-600 rounded-lg flex items-center justify-center">
+                  <div className="w-8 h-8 bg-success-100 text-success-600 rounded-xl flex items-center justify-center">
                     <Reply className="w-4 h-4" />
                   </div>
                   <h3 className="text-lg font-semibold text-neutral-900">Reply to Email</h3>
@@ -859,7 +859,7 @@ export default function EmailsPage() {
 
                 {/* CC/BCC Fields for Reply */}
                 {showCCBCC && (
-                  <div className="space-y-3 p-3 bg-neutral-50 rounded-lg">
+                  <div className="space-y-3 p-3 bg-neutral-50 rounded-xl">
                     <EmailMultiSelect
                       label="CC"
                       selectedEmails={replyCC}
@@ -897,11 +897,11 @@ export default function EmailsPage() {
 
                 {/* Attachments Preview */}
                 {replyAttachments.length > 0 && (
-                  <div className="p-3 bg-neutral-50 rounded-lg border">
+                  <div className="p-3 bg-neutral-50 rounded-xl border">
                     <h4 className="text-sm font-medium text-neutral-700 mb-2">Attachments ({replyAttachments.length})</h4>
                     <div className="space-y-2">
                       {replyAttachments.map((file, index) => (
-                        <div key={index} className="flex items-center justify-between bg-white p-2 rounded border">
+                        <div key={index} className="flex items-center justify-between bg-white p-2 rounded-lg border">
                           <div className="flex items-center space-x-2">
                             <Paperclip className="w-4 h-4 text-neutral-500" />
                             <span className="text-sm text-neutral-700">{file.name}</span>
@@ -920,7 +920,7 @@ export default function EmailsPage() {
                 )}
 
                 {/* Original Email Content */}
-                <div className="border-l-4 border-neutral-300 pl-4 py-3 bg-neutral-50 rounded-r-lg">
+                <div className="border-l-4 border-neutral-300 pl-4 py-3 bg-neutral-50 rounded-r-xl">
                   <div className="text-sm text-neutral-500 mb-2 font-medium">
                     On {formatDate(selectedEmail.createdAt)}, {selectedEmail.fromEmail} wrote:
                   </div>
@@ -983,13 +983,13 @@ export default function EmailsPage() {
           onClick={() => setShowForward(false)}
         >
           <div 
-            className="card w-full max-w-4xl mx-4 max-h-[90vh] bg-white shadow-2xl border border-neutral-200 flex flex-col"
+            className="card w-full max-w-4xl mx-4 max-h-[90vh] bg-white shadow-2xl border border-neutral-200 flex flex-col rounded-xl"
             onClick={(e) => e.stopPropagation()}
           >
             <div className="card-header">
               <div className="flex items-center justify-between">
                 <div className="flex items-center space-x-3">
-                  <div className="w-8 h-8 bg-primary-100 text-primary-600 rounded-lg flex items-center justify-center">
+                  <div className="w-8 h-8 bg-primary-100 text-primary-600 rounded-xl flex items-center justify-center">
                     <Send className="w-4 h-4" />
                   </div>
                   <h3 className="text-lg font-semibold text-neutral-900">Forward Email</h3>
@@ -1029,7 +1029,7 @@ export default function EmailsPage() {
 
                 {/* CC/BCC Fields for Forward */}
                 {showForwardCCBCC && (
-                  <div className="space-y-3 p-3 bg-neutral-50 rounded-lg">
+                  <div className="space-y-3 p-3 bg-neutral-50 rounded-xl">
                     <EmailMultiSelect
                       label="CC"
                       selectedEmails={forwardForm.ccEmails}

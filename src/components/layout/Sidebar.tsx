@@ -15,6 +15,9 @@ import {
   MessageCircle,
   Mail,
   ChevronRight,
+  UsersRound,
+  Megaphone,
+  Globe,
 } from 'lucide-react';
 import { useAuthStore } from '@/store/auth';
 import { UserRole } from '@/types';
@@ -25,8 +28,11 @@ const navigation = [
   { name: 'Dashboard', href: '/dashboard', icon: Home, badge: null },
   { name: 'Leads', href: '/leads', icon: Users, badge: null },
   { name: 'WhatsApp Chat', href: '/chat', icon: MessageCircle, badge: '3' },
+  { name: 'AI Conversations', href: '/ai-conversations', icon: Globe, badge: null },
   { name: 'Emails', href: '/emails', icon: Mail, badge: '12' },
   { name: 'Communications', href: '/communications', icon: MessageSquare, badge: null },
+  { name: 'Contacts', href: '/contacts', icon: UsersRound, badge: null },
+  { name: 'Campaigns', href: '/campaigns', icon: Megaphone, badge: null },
   { name: 'Tasks', href: '/tasks', icon: CheckSquare, badge: '5' },
   { name: 'Products', href: '/products', icon: Package, badge: null },
   { name: 'Clients', href: '/clients', icon: UserCheck, badge: null },

@@ -7,6 +7,7 @@ interface AuthState {
   user: User | null;
   token: string | null;
   isLoading: boolean;
+  isHydrated: boolean;
   login: (email: string, password: string) => Promise<void>;
   register: (data: { email: string; password: string; firstName: string; lastName: string; role?: string }) => Promise<void>;
   logout: () => void;
@@ -19,6 +20,7 @@ export const useAuthStore = create<AuthState>()(
       user: null,
       token: null,
       isLoading: false,
+      isHydrated: false,
 
       login: async (email: string, password: string) => {
         set({ isLoading: true });
@@ -26,7 +28,6 @@ export const useAuthStore = create<AuthState>()(
           const response = await authApi.login(email, password);
           const { access_token, user } = response.data;
           
-          localStorage.setItem('token', access_token);
           set({ user, token: access_token, isLoading: false });
         } catch (error) {
           set({ isLoading: false });
@@ -40,7 +41,6 @@ export const useAuthStore = create<AuthState>()(
           const response = await authApi.register(data);
           const { access_token, user } = response.data;
           
-          localStorage.setItem('token', access_token);
           set({ user, token: access_token, isLoading: false });
         } catch (error) {
           set({ isLoading: false });
@@ -49,20 +49,13 @@ export const useAuthStore = create<AuthState>()(
       },
 
       logout: () => {
-        localStorage.removeItem('token');
         set({ user: null, token: null });
       },
 
       checkAuth: async () => {
-        const token = localStorage.getItem('token');
         const currentState = get();
         
-        // If we already have user and token in state, don't re-check
-        if (currentState.user && currentState.token && token === currentState.token) {
-          return;
-        }
-        
-        if (!token) {
+        if (!currentState.token) {
           set({ user: null, token: null, isLoading: false });
           return;
         }
@@ -70,10 +63,9 @@ export const useAuthStore = create<AuthState>()(
         set({ isLoading: true });
         try {
           const response = await authApi.me();
-          set({ user: response.data, token, isLoading: false });
+          set({ user: response.data, isLoading: false });
         } catch (error) {
           console.error('Auth check failed:', error);
-          localStorage.removeItem('token');
           set({ user: null, token: null, isLoading: false });
         }
       },
@@ -84,6 +76,11 @@ export const useAuthStore = create<AuthState>()(
         user: state.user, 
         token: state.token 
       }),
+      onRehydrateStorage: () => (state) => {
+        if (state) {
+          state.isHydrated = true;
+        }
+      },
     }
   )
 );

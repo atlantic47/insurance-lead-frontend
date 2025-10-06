@@ -31,7 +31,7 @@ export default function AIPage() {
   const [message, setMessage] = useState('');
   const [selectedLead, setSelectedLead] = useState<Lead | null>(null);
   const [activeTab, setActiveTab] = useState<'chat' | 'insights' | 'history' | 'training' | 'assets' | 'widget'>('chat');
-  
+
   // Training state
   const [trainingUrl, setTrainingUrl] = useState('');
   const [trainingInstructions, setTrainingInstructions] = useState('');
@@ -41,6 +41,19 @@ export default function AIPage() {
   const [savedUrls, setSavedUrls] = useState<string[]>([]);
   const [testHistory, setTestHistory] = useState<Array<{message: string, response: string, timestamp: Date}>>([]);
   const chatMessagesRef = useRef<HTMLDivElement>(null);
+
+  // Widget customization state
+  const [widgetConfig, setWidgetConfig] = useState({
+    title: 'Chat Support',
+    subtitle: 'We usually reply within minutes',
+    buttonText: 'Chat with us',
+    greeting: 'Hi! How can I help you today?',
+    primaryColor: '#3B82F6',
+    position: 'bottom-right',
+    buttonStyle: 'pill',
+    showQuickReplies: true,
+    quickReplies: ['Get a quote', 'File a claim', 'Talk to agent']
+  });
 
   const queryClient = useQueryClient();
 
@@ -1084,8 +1097,8 @@ export default function AIPage() {
               <div className="space-y-8">
                 <div className="flex items-center justify-between">
                   <div>
-                    <h3 className="text-lg font-medium text-gray-900">Embeddable Widget</h3>
-                    <p className="text-sm text-gray-600 mt-1">Copy and paste this script to add the chatbot to any website</p>
+                    <h3 className="text-lg font-medium text-gray-900">Embeddable Chat Widget</h3>
+                    <p className="text-sm text-gray-600 mt-1">Customize and embed a beautiful chat widget on your website</p>
                   </div>
                   <div className="flex items-center space-x-2">
                     <Globe className="w-5 h-5 text-blue-600" />
@@ -1096,8 +1109,8 @@ export default function AIPage() {
                 {/* Widget Configuration */}
                 <div className="jira-content-card">
                   <div className="p-6">
-                    <h4 className="text-md font-medium text-gray-900 mb-4">Widget Configuration</h4>
-                    
+                    <h4 className="text-md font-medium text-gray-900 mb-6">Widget Customization</h4>
+
                     <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
                       <div>
                         <label className="block text-sm font-medium text-gray-700 mb-2">
@@ -1105,48 +1118,133 @@ export default function AIPage() {
                         </label>
                         <input
                           type="text"
-                          defaultValue="Insurance Assistant"
-                          className="w-full border border-gray-300 rounded-md px-3 py-2 text-sm"
-                          placeholder="Enter widget title"
+                          value={widgetConfig.title}
+                          onChange={(e) => setWidgetConfig({...widgetConfig, title: e.target.value})}
+                          className="w-full border border-gray-300 rounded-md px-3 py-2 text-sm focus:ring-2 focus:ring-blue-500 focus:border-transparent"
+                          placeholder="Chat Support"
                         />
                       </div>
-                      
+
                       <div>
                         <label className="block text-sm font-medium text-gray-700 mb-2">
-                          Position
+                          Subtitle
                         </label>
-                        <select className="w-full border border-gray-300 rounded-md px-3 py-2 text-sm">
-                          <option value="bottom-right">Bottom Right</option>
-                          <option value="bottom-left">Bottom Left</option>
-                          <option value="top-right">Top Right</option>
-                          <option value="top-left">Top Left</option>
-                        </select>
+                        <input
+                          type="text"
+                          value={widgetConfig.subtitle}
+                          onChange={(e) => setWidgetConfig({...widgetConfig, subtitle: e.target.value})}
+                          className="w-full border border-gray-300 rounded-md px-3 py-2 text-sm focus:ring-2 focus:ring-blue-500 focus:border-transparent"
+                          placeholder="We usually reply within minutes"
+                        />
                       </div>
-                      
+
                       <div>
                         <label className="block text-sm font-medium text-gray-700 mb-2">
-                          Theme Color
+                          Button Text
                         </label>
-                        <select className="w-full border border-gray-300 rounded-md px-3 py-2 text-sm">
-                          <option value="blue">Blue</option>
-                          <option value="green">Green</option>
-                          <option value="purple">Purple</option>
-                          <option value="red">Red</option>
-                        </select>
+                        <input
+                          type="text"
+                          value={widgetConfig.buttonText}
+                          onChange={(e) => setWidgetConfig({...widgetConfig, buttonText: e.target.value})}
+                          className="w-full border border-gray-300 rounded-md px-3 py-2 text-sm focus:ring-2 focus:ring-blue-500 focus:border-transparent"
+                          placeholder="Chat with us"
+                        />
                       </div>
-                      
+
                       <div>
                         <label className="block text-sm font-medium text-gray-700 mb-2">
                           Greeting Message
                         </label>
                         <input
                           type="text"
-                          defaultValue="Hi! How can I help you with insurance today?"
-                          className="w-full border border-gray-300 rounded-md px-3 py-2 text-sm"
-                          placeholder="Enter greeting message"
+                          value={widgetConfig.greeting}
+                          onChange={(e) => setWidgetConfig({...widgetConfig, greeting: e.target.value})}
+                          className="w-full border border-gray-300 rounded-md px-3 py-2 text-sm focus:ring-2 focus:ring-blue-500 focus:border-transparent"
+                          placeholder="Hi! How can I help you today?"
                         />
                       </div>
+
+                      <div>
+                        <label className="block text-sm font-medium text-gray-700 mb-2">
+                          Primary Color
+                        </label>
+                        <div className="flex gap-2">
+                          <input
+                            type="color"
+                            value={widgetConfig.primaryColor}
+                            onChange={(e) => setWidgetConfig({...widgetConfig, primaryColor: e.target.value})}
+                            className="h-10 w-16 border border-gray-300 rounded cursor-pointer"
+                          />
+                          <input
+                            type="text"
+                            value={widgetConfig.primaryColor}
+                            onChange={(e) => setWidgetConfig({...widgetConfig, primaryColor: e.target.value})}
+                            className="flex-1 border border-gray-300 rounded-md px-3 py-2 text-sm focus:ring-2 focus:ring-blue-500 focus:border-transparent"
+                            placeholder="#3B82F6"
+                          />
+                        </div>
+                      </div>
+
+                      <div>
+                        <label className="block text-sm font-medium text-gray-700 mb-2">
+                          Position
+                        </label>
+                        <select
+                          value={widgetConfig.position}
+                          onChange={(e) => setWidgetConfig({...widgetConfig, position: e.target.value})}
+                          className="w-full border border-gray-300 rounded-md px-3 py-2 text-sm focus:ring-2 focus:ring-blue-500 focus:border-transparent"
+                        >
+                          <option value="bottom-right">Bottom Right</option>
+                          <option value="bottom-left">Bottom Left</option>
+                          <option value="top-right">Top Right</option>
+                          <option value="top-left">Top Left</option>
+                        </select>
+                      </div>
+
+                      <div>
+                        <label className="block text-sm font-medium text-gray-700 mb-2">
+                          Button Style
+                        </label>
+                        <select
+                          value={widgetConfig.buttonStyle}
+                          onChange={(e) => setWidgetConfig({...widgetConfig, buttonStyle: e.target.value})}
+                          className="w-full border border-gray-300 rounded-md px-3 py-2 text-sm focus:ring-2 focus:ring-blue-500 focus:border-transparent"
+                        >
+                          <option value="pill">Pill (with text)</option>
+                          <option value="circle">Circle (icon only)</option>
+                        </select>
+                      </div>
+
+                      <div>
+                        <label className="flex items-center space-x-2">
+                          <input
+                            type="checkbox"
+                            checked={widgetConfig.showQuickReplies}
+                            onChange={(e) => setWidgetConfig({...widgetConfig, showQuickReplies: e.target.checked})}
+                            className="w-4 h-4 text-blue-600 border-gray-300 rounded focus:ring-blue-500"
+                          />
+                          <span className="text-sm font-medium text-gray-700">Show Quick Reply Buttons</span>
+                        </label>
+                      </div>
                     </div>
+
+                    {widgetConfig.showQuickReplies && (
+                      <div className="mt-6">
+                        <label className="block text-sm font-medium text-gray-700 mb-2">
+                          Quick Reply Options (comma-separated)
+                        </label>
+                        <input
+                          type="text"
+                          value={widgetConfig.quickReplies.join(', ')}
+                          onChange={(e) => setWidgetConfig({
+                            ...widgetConfig,
+                            quickReplies: e.target.value.split(',').map(q => q.trim()).filter(q => q)
+                          })}
+                          className="w-full border border-gray-300 rounded-md px-3 py-2 text-sm focus:ring-2 focus:ring-blue-500 focus:border-transparent"
+                          placeholder="Get a quote, File a claim, Talk to agent"
+                        />
+                      </div>
+                    )}
                   </div>
                 </div>
 
@@ -1157,45 +1255,80 @@ export default function AIPage() {
                       <h4 className="text-md font-medium text-gray-900">Embed Code</h4>
                       <button
                         onClick={() => {
-                          const code = document.getElementById('embed-code')?.textContent;
-                          if (code) {
-                            navigator.clipboard.writeText(code);
-                            alert('Code copied to clipboard!');
-                          }
-                        }}
-                        className="jira-button-primary"
-                      >
-                        <Download className="w-4 h-4 mr-2" />
-                        Copy Code
-                      </button>
-                    </div>
-                    
-                    <div className="bg-gray-50 rounded-lg p-4 border">
-                      <code id="embed-code" className="text-sm text-gray-800 whitespace-pre-wrap">
-{`<!-- Insurance Chatbot Widget -->
+                          const embedCode = `<!-- AI Chat Widget -->
 <script>
   window.CHATBOT_CONFIG = {
-    apiUrl: 'http://localhost:3001',
+    apiUrl: '${typeof window !== 'undefined' ? window.location.origin.replace(':3000', ':3001') : 'http://localhost:3001'}',
     widgetId: 'default',
-    title: 'Insurance Assistant',
-    greeting: 'Hi! How can I help you with insurance today?',
-    theme: 'blue',
-    position: 'bottom-right'
+    title: '${widgetConfig.title}',
+    subtitle: '${widgetConfig.subtitle}',
+    buttonText: '${widgetConfig.buttonText}',
+    greeting: '${widgetConfig.greeting}',
+    primaryColor: '${widgetConfig.primaryColor}',
+    position: '${widgetConfig.position}',
+    buttonStyle: '${widgetConfig.buttonStyle}',
+    showQuickReplies: ${widgetConfig.showQuickReplies},
+    quickReplies: ${JSON.stringify(widgetConfig.quickReplies)}
   };
 </script>
-<script src="http://localhost:3001/api/ai/widget/script"></script>
-<!-- End Insurance Chatbot Widget -->`}
-                      </code>
+<script src="${typeof window !== 'undefined' ? window.location.origin.replace(':3000', ':3001') : 'http://localhost:3001'}/widget/chatbot-widget.js"></script>
+<!-- End AI Chat Widget -->`;
+                          navigator.clipboard.writeText(embedCode);
+                          alert('✅ Code copied to clipboard!');
+                        }}
+                        className="inline-flex items-center px-4 py-2 bg-gradient-to-r from-blue-600 to-indigo-600 text-white rounded-lg hover:from-blue-700 hover:to-indigo-700 transition-all shadow-sm font-medium"
+                      >
+                        <Download className="w-4 h-4 mr-2" />
+                        Copy Embed Code
+                      </button>
                     </div>
-                    
-                    <div className="mt-4 p-4 bg-blue-50 rounded-lg">
-                      <h5 className="text-sm font-medium text-blue-900 mb-2">Installation Instructions:</h5>
-                      <ul className="text-sm text-blue-800 space-y-1">
-                        <li>1. Copy the code above</li>
-                        <li>2. Paste it before the closing &lt;/body&gt; tag on your website</li>
-                        <li>3. The chatbot will appear on all pages where the code is installed</li>
-                        <li>4. Customize the configuration object to match your preferences</li>
-                      </ul>
+
+                    <div className="bg-gray-900 rounded-lg p-4 border border-gray-700 overflow-x-auto">
+                      <pre className="text-sm text-green-400 font-mono">
+{`<!-- AI Chat Widget -->
+<script>
+  window.CHATBOT_CONFIG = {
+    apiUrl: '${typeof window !== 'undefined' ? window.location.origin.replace(':3000', ':3001') : 'http://localhost:3001'}',
+    widgetId: 'default',
+    title: '${widgetConfig.title}',
+    subtitle: '${widgetConfig.subtitle}',
+    buttonText: '${widgetConfig.buttonText}',
+    greeting: '${widgetConfig.greeting}',
+    primaryColor: '${widgetConfig.primaryColor}',
+    position: '${widgetConfig.position}',
+    buttonStyle: '${widgetConfig.buttonStyle}',
+    showQuickReplies: ${widgetConfig.showQuickReplies},
+    quickReplies: ${JSON.stringify(widgetConfig.quickReplies)}
+  };
+</script>
+<script src="${typeof window !== 'undefined' ? window.location.origin.replace(':3000', ':3001') : 'http://localhost:3001'}/widget/chatbot-widget.js"></script>
+<!-- End AI Chat Widget -->`}
+                      </pre>
+                    </div>
+
+                    <div className="mt-4 p-4 bg-gradient-to-r from-blue-50 to-indigo-50 rounded-lg border border-blue-200">
+                      <h5 className="text-sm font-semibold text-blue-900 mb-3 flex items-center gap-2">
+                        <Settings className="w-4 h-4" />
+                        Installation Instructions
+                      </h5>
+                      <ol className="text-sm text-blue-800 space-y-2">
+                        <li className="flex items-start gap-2">
+                          <span className="font-semibold min-w-[20px]">1.</span>
+                          <span>Click "Copy Embed Code" button above</span>
+                        </li>
+                        <li className="flex items-start gap-2">
+                          <span className="font-semibold min-w-[20px]">2.</span>
+                          <span>Paste the code before the closing <code className="bg-blue-100 px-1 rounded">&lt;/body&gt;</code> tag on your website</span>
+                        </li>
+                        <li className="flex items-start gap-2">
+                          <span className="font-semibold min-w-[20px]">3.</span>
+                          <span>The chat widget will appear on all pages where the code is installed</span>
+                        </li>
+                        <li className="flex items-start gap-2">
+                          <span className="font-semibold min-w-[20px]">4.</span>
+                          <span>Customize the appearance using the configuration options above</span>
+                        </li>
+                      </ol>
                     </div>
                   </div>
                 </div>
@@ -1203,16 +1336,58 @@ export default function AIPage() {
                 {/* Preview */}
                 <div className="jira-content-card">
                   <div className="p-6">
-                    <h4 className="text-md font-medium text-gray-900 mb-4">Preview</h4>
-                    <div className="bg-gray-100 rounded-lg p-8 relative" style={{ height: '300px' }}>
-                      <div className="absolute bottom-4 right-4">
-                        <div className="bg-blue-600 text-white p-3 rounded-full shadow-lg cursor-pointer hover:scale-110 transition-transform">
-                          <MessageCircle className="w-6 h-6" />
-                        </div>
+                    <h4 className="text-md font-medium text-gray-900 mb-4">Live Preview</h4>
+                    <div className="bg-gradient-to-br from-gray-50 to-gray-100 rounded-lg p-8 relative border-2 border-dashed border-gray-300" style={{ height: '400px' }}>
+                      <div className="text-center mt-32">
+                        <Globe className="w-16 h-16 text-gray-400 mx-auto mb-4" />
+                        <p className="text-gray-600 font-medium">This is how the widget will appear on your website</p>
+                        <p className="text-sm text-gray-500 mt-2">Positioned at {widgetConfig.position.replace('-', ' ')}</p>
                       </div>
-                      <p className="text-gray-600 text-center mt-20">
-                        This is how the widget will appear on your website
-                      </p>
+
+                      {/* Widget Preview Button */}
+                      <div
+                        className="absolute"
+                        style={{
+                          [widgetConfig.position.includes('right') ? 'right' : 'left']: '20px',
+                          [widgetConfig.position.includes('bottom') ? 'bottom' : 'top']: '20px',
+                        }}
+                      >
+                        <button
+                          className="shadow-xl transition-transform hover:scale-105"
+                          style={{
+                            background: widgetConfig.primaryColor,
+                            color: 'white',
+                            border: 'none',
+                            cursor: 'pointer',
+                            fontSize: '15px',
+                            fontWeight: '600',
+                            display: 'inline-flex',
+                            alignItems: 'center',
+                            gap: '10px',
+                            ...(widgetConfig.buttonStyle === 'pill' ? {
+                              padding: '14px 24px',
+                              borderRadius: '30px',
+                            } : {
+                              width: '60px',
+                              height: '60px',
+                              borderRadius: '50%',
+                              justifyContent: 'center',
+                            })
+                          }}
+                        >
+                          <MessageCircle className="w-6 h-6" />
+                          {widgetConfig.buttonStyle === 'pill' && <span>{widgetConfig.buttonText}</span>}
+                        </button>
+                      </div>
+                    </div>
+
+                    <div className="mt-4 flex items-center gap-2 text-sm text-gray-600">
+                      <div className="flex items-center gap-1">
+                        <div className="w-3 h-3 rounded-full" style={{ background: widgetConfig.primaryColor }}></div>
+                        <span>Primary Color: {widgetConfig.primaryColor}</span>
+                      </div>
+                      <span>•</span>
+                      <span>Style: {widgetConfig.buttonStyle === 'pill' ? 'Pill with text' : 'Circle icon only'}</span>
                     </div>
                   </div>
                 </div>

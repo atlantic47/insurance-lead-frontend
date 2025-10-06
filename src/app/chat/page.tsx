@@ -268,9 +268,9 @@ export default function ChatPage() {
           <p className="text-gray-600">Manage customer conversations and leads from WhatsApp</p>
         </div>
         
-        <div className="flex gap-8">
+        <div className="flex gap-0 bg-white rounded-2xl shadow-xl border border-gray-100 h-[calc(100vh-200px)] overflow-hidden">
           {/* Main Chat Interface */}
-          <div className="flex-1 bg-white rounded-2xl shadow-xl border border-gray-100 h-[calc(100vh-200px)] overflow-hidden">
+          <div className="flex-1">
             <div className="flex h-full">
               {/* Sidebar */}
               <div className="w-96 bg-gradient-to-b from-slate-50 to-white border-r border-gray-100 flex flex-col">
@@ -291,9 +291,9 @@ export default function ChatPage() {
                       placeholder="Search conversations..."
                       value={searchTerm}
                       onChange={(e) => setSearchTerm(e.target.value)}
-                      className="w-full pl-12 pr-4 py-3.5 bg-white rounded-xl border border-gray-200 focus:outline-none focus:ring-3 focus:ring-green-500/20 focus:border-green-500 transition-all duration-200 text-gray-700 placeholder-gray-400 shadow-sm"
+                      className="w-full pl-4 pr-12 py-3.5 bg-white rounded-xl border border-gray-200 focus:outline-none focus:ring-3 focus:ring-green-500/20 focus:border-green-500 transition-all duration-200 text-gray-900 placeholder:text-gray-600 shadow-sm"
                     />
-                    <Search className="absolute left-4 top-1/2 transform -translate-y-1/2 h-4 w-4 text-gray-400 pointer-events-none" />
+                    <Search className="absolute right-4 top-1/2 transform -translate-y-1/2 h-5 w-5 text-gray-400 pointer-events-none" />
                   </div>
                   <div className="flex items-center justify-between mt-6 px-1">
                     <span className="text-sm font-medium text-gray-600">Active Conversations</span>
@@ -517,10 +517,135 @@ export default function ChatPage() {
             </div>
           </div>
           
-          {/* WhatsApp Simulator for Testing */}
-          <div className="w-96">
-            <WhatsAppSimulator onMessageSent={fetchConversations} />
-          </div>
+          {/* Customer Details Panel */}
+          {selectedConversation && (
+            <div className="w-96 bg-white border-l border-gray-200 p-6 overflow-y-auto">
+              {/* Customer Profile */}
+              <div className="text-center mb-6">
+                <div className="w-20 h-20 rounded-full bg-green-100 flex items-center justify-center mx-auto mb-3">
+                  <span className="text-2xl font-medium text-green-700">
+                    {selectedConversation.lead.firstName.charAt(0)}{selectedConversation.lead.lastName.charAt(0)}
+                  </span>
+                </div>
+                <h2 className="text-xl font-semibold text-gray-900">
+                  {selectedConversation.lead.firstName} {selectedConversation.lead.lastName}
+                </h2>
+                <p className="text-sm text-gray-500 mt-1">{selectedConversation.lead.status}</p>
+              </div>
+
+              {/* Contact Information */}
+              <div className="mb-6 pb-6 border-b border-gray-200">
+                <h3 className="text-sm font-semibold text-gray-700 mb-3">Contact Information</h3>
+                <div className="space-y-2">
+                  <div className="flex items-center text-sm">
+                    <Phone className="w-4 h-4 text-gray-400 mr-2" />
+                    <span className="text-gray-600">{selectedConversation.lead.phone}</span>
+                  </div>
+                  {selectedConversation.lead.email && (
+                    <div className="flex items-center text-sm">
+                      <span className="text-gray-400 mr-2">@</span>
+                      <span className="text-gray-600">{selectedConversation.lead.email}</span>
+                    </div>
+                  )}
+                </div>
+              </div>
+
+              {/* Conversation Actions */}
+              <div className="mb-6 pb-6 border-b border-gray-200">
+                <h3 className="text-sm font-semibold text-gray-700 mb-3">Conversation Actions</h3>
+                <div className="space-y-2">
+                  {!selectedConversation.isEscalated && (
+                    <button
+                      onClick={() => escalateConversation(selectedConversation.id)}
+                      className="w-full px-4 py-2 text-sm bg-orange-100 text-orange-800 rounded-lg hover:bg-orange-200 transition-colors flex items-center justify-center"
+                    >
+                      <UserCheck className="w-4 h-4 mr-2" />
+                      Take Over from AI
+                    </button>
+                  )}
+                  <button
+                    onClick={() => showLeadDetails(selectedConversation)}
+                    className="w-full px-4 py-2 text-sm bg-blue-100 text-blue-800 rounded-lg hover:bg-blue-200 transition-colors flex items-center justify-center"
+                  >
+                    <Info className="w-4 h-4 mr-2" />
+                    View Full Lead Details
+                  </button>
+                </div>
+              </div>
+
+              {/* Assigned Agent */}
+              <div className="mb-6 pb-6 border-b border-gray-200">
+                <h3 className="text-sm font-semibold text-gray-700 mb-3">Assigned Agent</h3>
+                <div className="flex items-center">
+                  <div className="w-8 h-8 rounded-full bg-blue-100 flex items-center justify-center">
+                    <User className="w-4 h-4 text-blue-600" />
+                  </div>
+                  <div className="ml-3">
+                    <p className="text-sm font-medium text-gray-900">{user?.name || 'Not Assigned'}</p>
+                    <p className="text-xs text-gray-500">{user?.email}</p>
+                  </div>
+                </div>
+              </div>
+
+              {/* Conversation Status */}
+              <div className="mb-6 pb-6 border-b border-gray-200">
+                <h3 className="text-sm font-semibold text-gray-700 mb-3">Status</h3>
+                <div className="space-y-2">
+                  <div className="flex items-center justify-between">
+                    <span className="text-sm text-gray-600">Mode</span>
+                    <span className={`text-xs px-2 py-1 rounded-full ${
+                      selectedConversation.isEscalated
+                        ? 'bg-orange-100 text-orange-800'
+                        : 'bg-green-100 text-green-800'
+                    }`}>
+                      {selectedConversation.isEscalated ? 'Human Agent' : 'AI Active'}
+                    </span>
+                  </div>
+                  {selectedConversation.isEscalated && selectedConversation.escalatedAt && (
+                    <div className="flex items-center justify-between">
+                      <span className="text-sm text-gray-600">Escalated At</span>
+                      <span className="text-xs text-gray-500">
+                        {new Date(selectedConversation.escalatedAt).toLocaleString()}
+                      </span>
+                    </div>
+                  )}
+                </div>
+              </div>
+
+              {/* Priority */}
+              <div className="mb-6 pb-6 border-b border-gray-200">
+                <h3 className="text-sm font-semibold text-gray-700 mb-3">Priority</h3>
+                <select className="w-full px-3 py-2 text-sm border border-gray-200 rounded-lg focus:outline-none focus:ring-2 focus:ring-green-500">
+                  <option>Medium</option>
+                  <option>Low</option>
+                  <option>High</option>
+                  <option>Urgent</option>
+                </select>
+              </div>
+
+              {/* Conversation Labels */}
+              <div>
+                <h3 className="text-sm font-semibold text-gray-700 mb-3">Conversation Labels</h3>
+                <div className="flex flex-wrap gap-2">
+                  <span className="px-2 py-1 text-xs bg-purple-100 text-purple-700 rounded-full">
+                    {selectedConversation.lead.status.toLowerCase()}
+                  </span>
+                  <button className="px-2 py-1 text-xs bg-gray-100 text-gray-600 rounded-full hover:bg-gray-200">
+                    + Add Label
+                  </button>
+                </div>
+              </div>
+            </div>
+          )}
+
+          {!selectedConversation && (
+            <div className="w-96 bg-white border-l border-gray-200 p-6 flex items-center justify-center">
+              <div className="text-center">
+                <User className="w-16 h-16 mx-auto mb-4 text-gray-300" />
+                <p className="text-gray-500">Select a conversation to view customer details</p>
+              </div>
+            </div>
+          )}
         </div>
         
         {/* Lead Information Modal */}

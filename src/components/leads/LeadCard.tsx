@@ -2,7 +2,7 @@
 
 import { Lead, LeadStatus } from '@/types';
 import { getStatusColor, formatDate, getInitials, getUrgencyLabel } from '@/lib/utils';
-import { Phone, Mail, User, Calendar, DollarSign } from 'lucide-react';
+import { Phone, Mail, User, Calendar, DollarSign, ChevronLeft, ChevronRight } from 'lucide-react';
 
 interface LeadCardProps {
   lead: Lead;
@@ -26,6 +26,24 @@ export default function LeadCard({ lead, onStatusChange, onClick }: LeadCardProp
   const handleStatusChange = (e: React.ChangeEvent<HTMLSelectElement>) => {
     e.stopPropagation();
     onStatusChange(lead.id, e.target.value as LeadStatus);
+  };
+
+  const currentIndex = PIPELINE_STAGES.indexOf(lead.status);
+  const canMovePrevious = currentIndex > 0;
+  const canMoveNext = currentIndex < PIPELINE_STAGES.length - 1;
+
+  const moveToPreviousStage = (e: React.MouseEvent) => {
+    e.stopPropagation();
+    if (canMovePrevious) {
+      onStatusChange(lead.id, PIPELINE_STAGES[currentIndex - 1]);
+    }
+  };
+
+  const moveToNextStage = (e: React.MouseEvent) => {
+    e.stopPropagation();
+    if (canMoveNext) {
+      onStatusChange(lead.id, PIPELINE_STAGES[currentIndex + 1]);
+    }
   };
 
   return (
@@ -93,19 +111,43 @@ export default function LeadCard({ lead, onStatusChange, onClick }: LeadCardProp
           <span className="text-xs text-gray-500">Score:</span>
           <span className="text-sm font-medium text-gray-900">{lead.score.toFixed(1)}</span>
         </div>
-        
-        <select
-          value={lead.status}
-          onChange={handleStatusChange}
-          className="text-xs border-0 bg-transparent text-gray-600 hover:text-gray-900 focus:outline-none focus:ring-0"
-          onClick={(e) => e.stopPropagation()}
-        >
-          {PIPELINE_STAGES.map((status) => (
-            <option key={status} value={status}>
-              {status.replace('_', ' ')}
-            </option>
-          ))}
-        </select>
+
+        <div className="flex items-center space-x-1">
+          <button
+            onClick={moveToPreviousStage}
+            disabled={!canMovePrevious}
+            className={`p-1 rounded hover:bg-gray-100 transition-colors ${
+              !canMovePrevious ? 'opacity-30 cursor-not-allowed' : ''
+            }`}
+            title="Move to previous stage"
+          >
+            <ChevronLeft className="w-4 h-4 text-gray-600" />
+          </button>
+
+          <select
+            value={lead.status}
+            onChange={handleStatusChange}
+            className="text-xs border border-gray-200 rounded px-2 py-1 bg-white text-gray-700 hover:bg-gray-50 focus:outline-none focus:ring-2 focus:ring-blue-500"
+            onClick={(e) => e.stopPropagation()}
+          >
+            {PIPELINE_STAGES.map((status) => (
+              <option key={status} value={status}>
+                {status.replace('_', ' ')}
+              </option>
+            ))}
+          </select>
+
+          <button
+            onClick={moveToNextStage}
+            disabled={!canMoveNext}
+            className={`p-1 rounded hover:bg-gray-100 transition-colors ${
+              !canMoveNext ? 'opacity-30 cursor-not-allowed' : ''
+            }`}
+            title="Move to next stage"
+          >
+            <ChevronRight className="w-4 h-4 text-gray-600" />
+          </button>
+        </div>
       </div>
 
       {lead.inquiryDetails && (

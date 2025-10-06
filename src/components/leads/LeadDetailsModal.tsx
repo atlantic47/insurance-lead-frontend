@@ -4,21 +4,22 @@ import { Fragment, useState } from 'react';
 import { Dialog, Transition } from '@headlessui/react';
 import { Lead, LeadStatus, Communication } from '@/types';
 import { getStatusColor, formatDate, formatDateTime, getInitials } from '@/lib/utils';
-import { 
-  X, 
-  User, 
-  Mail, 
-  Phone, 
-  MapPin, 
-  DollarSign, 
+import {
+  X,
+  User,
+  Mail,
+  Phone,
+  MapPin,
+  DollarSign,
   Calendar,
   MessageSquare,
   CheckSquare,
   Bot,
   Edit
 } from 'lucide-react';
-import { useQuery } from '@tanstack/react-query';
-import { communicationsApi, tasksApi } from '@/lib/api';
+import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
+import { communicationsApi, tasksApi, leadsApi } from '@/lib/api';
+import EditLeadModal from './EditLeadModal';
 
 interface LeadDetailsModalProps {
   lead: Lead | null;
@@ -28,6 +29,8 @@ interface LeadDetailsModalProps {
 
 export default function LeadDetailsModal({ lead, isOpen, onClose }: LeadDetailsModalProps) {
   const [activeTab, setActiveTab] = useState<'details' | 'communications' | 'tasks' | 'ai'>('details');
+  const [isEditModalOpen, setIsEditModalOpen] = useState(false);
+  const queryClient = useQueryClient();
 
   const { data: communications } = useQuery({
     queryKey: ['communications', 'lead', lead?.id],
@@ -40,6 +43,19 @@ export default function LeadDetailsModal({ lead, isOpen, onClose }: LeadDetailsM
     queryFn: () => tasksApi.getAll({ leadId: lead!.id }).then(res => res.data),
     enabled: !!lead?.id && activeTab === 'tasks',
   });
+
+  const updateLeadMutation = useMutation({
+    mutationFn: ({ id, data }: { id: string; data: any }) => leadsApi.update(id, data),
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ['leads'] });
+      setIsEditModalOpen(false);
+      onClose();
+    },
+  });
+
+  const handleUpdateLead = async (id: string, data: any) => {
+    await updateLeadMutation.mutateAsync({ id, data });
+  };
 
   if (!lead) return null;
 
@@ -99,6 +115,7 @@ export default function LeadDetailsModal({ lead, isOpen, onClose }: LeadDetailsM
                   </div>
                   <div className="flex items-center space-x-2">
                     <button
+                      onClick={() => setIsEditModalOpen(true)}
                       className="text-gray-400 hover:text-gray-500"
                       title="Edit Lead"
                     >
@@ -324,6 +341,14 @@ export default function LeadDetailsModal({ lead, isOpen, onClose }: LeadDetailsM
             </Transition.Child>
           </div>
         </div>
+
+        <EditLeadModal
+          lead={lead}
+          isOpen={isEditModalOpen}
+          onClose={() => setIsEditModalOpen(false)}
+          onSubmit={handleUpdateLead}
+          isLoading={updateLeadMutation.isPending}
+        />
       </Dialog>
     </Transition>
   );

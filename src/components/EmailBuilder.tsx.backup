@@ -1,0 +1,408 @@
+'use client';
+
+import { useState } from 'react';
+import {
+  DndContext,
+  closestCenter,
+  KeyboardSensor,
+  PointerSensor,
+  useSensor,
+  useSensors,
+  DragEndEvent,
+} from '@dnd-kit/core';
+import {
+  arrayMove,
+  SortableContext,
+  sortableKeyboardCoordinates,
+  useSortable,
+  verticalListSortingStrategy,
+} from '@dnd-kit/sortable';
+import { CSS } from '@dnd-kit/utilities';
+import {
+  X, Save, Eye, Code, Smartphone, Monitor, Tablet,
+  Type, Image as ImageIcon, Square, Columns, Layout,
+  GripVertical, Trash2, Settings2, Plus, Download
+} from 'lucide-react';
+
+interface Block {
+  id: string;
+  type: string;
+  content: string;
+  styles?: Record<string, string>;
+}
+
+interface EmailBuilderProps {
+  initialHtml?: string;
+  initialName?: string;
+  initialSubject?: string;
+  initialDescription?: string;
+  onSave: (data: { name: string; subject: string; description: string; htmlContent: string; content: string }) => void;
+  onClose: () => void;
+}
+
+function SortableBlock({ block, onEdit, onDelete }: { block: Block; onEdit: (id: string, content: string) => void; onDelete: (id: string) => void }) {
+  const {
+    attributes,
+    listeners,
+    setNodeRef,
+    transform,
+    transition,
+    isDragging,
+  } = useSortable({ id: block.id });
+
+  const style = {
+    transform: CSS.Transform.toString(transform),
+    transition,
+    opacity: isDragging ? 0.5 : 1,
+  };
+
+  const [isEditing, setIsEditing] = useState(false);
+  const [editContent, setEditContent] = useState(block.content);
+
+  const handleSave = () => {
+    onEdit(block.id, editContent);
+    setIsEditing(false);
+  };
+
+  return (
+    <div ref={setNodeRef} style={style} className="group relative bg-white border-2 border-gray-200 rounded-lg mb-3 hover:border-blue-400 transition-colors">
+      {/* Drag Handle */}
+      <div className="absolute -left-3 top-1/2 -translate-y-1/2 opacity-0 group-hover:opacity-100 transition-opacity">
+        <div {...attributes} {...listeners} className="cursor-move bg-gray-700 text-white p-1 rounded shadow-lg">
+          <GripVertical className="w-4 h-4" />
+        </div>
+
+        {/* Right Sidebar - Properties */}
+        <div className="w-80 border-l border-gray-200 bg-white overflow-y-auto p-4">
+          <h3 className="text-sm font-semibold text-gray-700 mb-4">PROPERTIES</h3>
+
+          <div className="space-y-4">
+            <div>
+              <label className="block text-xs font-medium text-gray-600 mb-2">Email Width</label>
+              <select className="w-full px-3 py-2 border border-gray-300 rounded-lg text-sm">
+                <option>600px (Recommended)</option>
+                <option>650px</option>
+                <option>700px</option>
+              </select>
+            </div>
+
+            <div>
+              <label className="block text-xs font-medium text-gray-600 mb-2">Background Color</label>
+              <div className="flex items-center space-x-2">
+                <input type="color" className="w-10 h-10 rounded cursor-pointer border border-gray-300" defaultValue="#f4f4f4" />
+                <input type="text" className="flex-1 px-3 py-2 border border-gray-300 rounded-lg text-sm" defaultValue="#f4f4f4" />
+              </div>
+            </div>
+
+            <div>
+              <label className="block text-xs font-medium text-gray-600 mb-2">Font Family</label>
+              <select className="w-full px-3 py-2 border border-gray-300 rounded-lg text-sm">
+                <option>Arial, sans-serif</option>
+                <option>Helvetica, sans-serif</option>
+                <option>Georgia, serif</option>
+              </select>
+            </div>
+          </div>
+
+          <div className="mt-8">
+            <h3 className="text-sm font-semibold text-gray-700 mb-4">QUICK ACTIONS</h3>
+            <div className="space-y-2">
+              <button className="w-full flex items-center justify-between px-4 py-2 bg-gray-100 hover:bg-gray-200 rounded-lg text-sm">
+                <span>Export HTML</span>
+                <Download className="w-4 h-4" />
+              </button>
+              <button onClick={() => setShowCode(true)} className="w-full flex items-center justify-between px-4 py-2 bg-gray-100 hover:bg-gray-200 rounded-lg text-sm">
+                <span>View Code</span>
+                <Code className="w-4 h-4" />
+              </button>
+            </div>
+          </div>
+
+          <div className="mt-8">
+            <h3 className="text-sm font-semibold text-gray-700 mb-4">TIPS</h3>
+            <div className="bg-blue-50 border border-blue-200 rounded-lg p-3">
+              <ul className="text-xs text-blue-900 space-y-1.5">
+                <li>• Keep width under 600px</li>
+                <li>• Use inline CSS</li>
+                <li>• Test on multiple clients</li>
+                <li>• Include alt text for images</li>
+              </ul>
+            </div>
+          </div>
+        </div>
+      </div>
+
+      {/* Actions */}
+      <div className="absolute -right-3 top-1/2 -translate-y-1/2 opacity-0 group-hover:opacity-100 transition-opacity flex flex-col gap-1">
+        <button
+          onClick={() => setIsEditing(!isEditing)}
+          className="bg-blue-600 text-white p-1.5 rounded shadow-lg hover:bg-blue-700"
+        >
+          <Settings2 className="w-4 h-4" />
+        </button>
+        <button
+          onClick={() => onDelete(block.id)}
+          className="bg-red-600 text-white p-1.5 rounded shadow-lg hover:bg-red-700"
+        >
+          <Trash2 className="w-4 h-4" />
+        </button>
+      </div>
+
+      {/* Content */}
+      {isEditing ? (
+        <div className="p-4 bg-blue-50">
+          <textarea
+            value={editContent}
+            onChange={(e) => setEditContent(e.target.value)}
+            className="w-full px-3 py-2 border border-gray-300 rounded-lg mb-2 font-mono text-sm"
+            rows={4}
+          />
+          <div className="flex gap-2">
+            <button onClick={handleSave} className="px-3 py-1 bg-blue-600 text-white rounded text-sm hover:bg-blue-700">
+              Save
+            </button>
+            <button onClick={() => setIsEditing(false)} className="px-3 py-1 bg-gray-300 text-gray-700 rounded text-sm hover:bg-gray-400">
+              Cancel
+            </button>
+          </div>
+        </div>
+      ) : (
+        <div className="p-4" dangerouslySetInnerHTML={{ __html: block.content }} />
+      )}
+    </div>
+  );
+}
+
+export default function EmailBuilder({
+  initialHtml = '',
+  initialName = '',
+  initialSubject = '',
+  initialDescription = '',
+  onSave,
+  onClose,
+}: EmailBuilderProps) {
+  const [blocks, setBlocks] = useState<Block[]>([]);
+  const [name, setName] = useState(initialName);
+  const [subject, setSubject] = useState(initialSubject);
+  const [description, setDescription] = useState(initialDescription);
+  const [viewMode, setViewMode] = useState<'desktop' | 'tablet' | 'mobile'>('desktop');
+  const [showCode, setShowCode] = useState(false);
+
+  const sensors = useSensors(
+    useSensor(PointerSensor),
+    useSensor(KeyboardSensor, {
+      coordinateGetter: sortableKeyboardCoordinates,
+    })
+  );
+
+  const deviceWidths = {
+    desktop: '100%',
+    tablet: '768px',
+    mobile: '375px',
+  };
+
+  const contentBlocks = [
+    { icon: Type, label: 'Text', type: 'text', template: '<p style="font-family: Arial, sans-serif; color: #333; font-size: 16px; line-height: 1.6; margin: 0;">Click edit to change this text. Use {firstName} or {lastName} for personalization.</p>' },
+    { icon: ImageIcon, label: 'Image', type: 'image', template: '<img src="https://via.placeholder.com/600x300/3b82f6/ffffff?text=Click+Edit+to+Change+Image" alt="Image" style="max-width: 100%; height: auto; display: block;" />' },
+    { icon: Square, label: 'Button', type: 'button', template: '<a href="#" style="display: inline-block; padding: 14px 40px; background-color: #3b82f6; color: #ffffff; text-decoration: none; border-radius: 6px; font-weight: 600; font-family: Arial, sans-serif;">Click Here</a>' },
+    { icon: Columns, label: '2 Columns', type: 'columns', template: '<table width="100%" cellpadding="0" cellspacing="0"><tr><td style="width: 50%; padding: 10px; vertical-align: top;"><p style="margin: 0; color: #333; font-family: Arial;">Column 1</p></td><td style="width: 50%; padding: 10px; vertical-align: top;"><p style="margin: 0; color: #333; font-family: Arial;">Column 2</p></td></tr></table>' },
+    { icon: Layout, label: 'Divider', type: 'divider', template: '<hr style="border: none; border-top: 2px solid #e5e7eb; margin: 20px 0;" />' },
+  ];
+
+  const addBlock = (type: string, template: string) => {
+    const newBlock: Block = {
+      id: `block-${Date.now()}`,
+      type,
+      content: template,
+    };
+    setBlocks([...blocks, newBlock]);
+  };
+
+  const editBlock = (id: string, content: string) => {
+    setBlocks(blocks.map(block => block.id === id ? { ...block, content } : block));
+  };
+
+  const deleteBlock = (id: string) => {
+    setBlocks(blocks.filter(block => block.id !== id));
+  };
+
+  const handleDragEnd = (event: DragEndEvent) => {
+    const { active, over } = event;
+
+    if (over && active.id !== over.id) {
+      setBlocks((items) => {
+        const oldIndex = items.findIndex((item) => item.id === active.id);
+        const newIndex = items.findIndex((item) => item.id === over.id);
+        return arrayMove(items, oldIndex, newIndex);
+      });
+    }
+  };
+
+  const generateHtml = () => {
+    const blocksHtml = blocks.map(block => `<div style="padding: 20px;">${block.content}</div>`).join('\n');
+
+    return `
+<!DOCTYPE html>
+<html>
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+</head>
+<body style="margin: 0; padding: 0; font-family: Arial, sans-serif; background-color: #f4f4f4;">
+  <table role="presentation" style="width: 100%; border-collapse: collapse;">
+    <tr>
+      <td align="center" style="padding: 40px 0;">
+        <table role="presentation" style="width: 600px; max-width: 100%; border-collapse: collapse; background-color: #ffffff;">
+          ${blocksHtml}
+        </table>
+      </td>
+    </tr>
+  </table>
+</body>
+</html>`.trim();
+  };
+
+  const handleSave = () => {
+    const htmlContent = generateHtml();
+    const tempDiv = document.createElement('div');
+    tempDiv.innerHTML = htmlContent;
+    const plainText = tempDiv.textContent || tempDiv.innerText || '';
+
+    onSave({
+      name,
+      subject,
+      description,
+      htmlContent,
+      content: plainText.substring(0, 500),
+    });
+  };
+
+  return (
+    <div className="fixed inset-0 bg-white z-[100] flex flex-col">
+      {/* Top Bar */}
+      <div className="h-16 border-b border-gray-200 flex items-center justify-between px-6 bg-white shadow-sm">
+        <div className="flex items-center space-x-4">
+          <button onClick={onClose} className="p-2 hover:bg-gray-100 rounded-lg transition-colors">
+            <X className="w-5 h-5 text-gray-600" />
+          </button>
+          <div className="h-8 w-px bg-gray-300" />
+          <input
+            type="text"
+            value={name}
+            onChange={(e) => setName(e.target.value)}
+            placeholder="Template Name"
+            className="text-lg font-semibold border-none focus:outline-none focus:ring-0 text-gray-900"
+          />
+        </div>
+
+        <div className="flex items-center space-x-3">
+          {/* Device Preview */}
+          <div className="flex bg-gray-100 rounded-lg p-1">
+            <button onClick={() => setViewMode('desktop')} className={`p-2 rounded ${viewMode === 'desktop' ? 'bg-white shadow-sm text-blue-600' : 'text-gray-600'}`}>
+              <Monitor className="w-4 h-4" />
+            </button>
+            <button onClick={() => setViewMode('tablet')} className={`p-2 rounded ${viewMode === 'tablet' ? 'bg-white shadow-sm text-blue-600' : 'text-gray-600'}`}>
+              <Tablet className="w-4 h-4" />
+            </button>
+            <button onClick={() => setViewMode('mobile')} className={`p-2 rounded ${viewMode === 'mobile' ? 'bg-white shadow-sm text-blue-600' : 'text-gray-600'}`}>
+              <Smartphone className="w-4 h-4" />
+            </button>
+          </div>
+
+          <button onClick={() => setShowCode(!showCode)} className={`p-2 rounded-lg ${showCode ? 'bg-blue-50 text-blue-600' : 'text-gray-600 hover:bg-gray-100'}`}>
+            <Code className="w-5 h-5" />
+          </button>
+
+          <button onClick={handleSave} disabled={!name} className="px-6 py-2.5 bg-blue-600 text-white rounded-lg hover:bg-blue-700 disabled:opacity-50 font-medium">
+            Save Template
+          </button>
+        </div>
+      </div>
+
+      {/* Subject */}
+      <div className="px-6 py-3 border-b border-gray-200 bg-gray-50">
+        <input
+          type="text"
+          value={subject}
+          onChange={(e) => setSubject(e.target.value)}
+          placeholder="Email Subject Line"
+          className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500"
+        />
+      </div>
+
+      {/* Main */}
+      <div className="flex-1 flex overflow-hidden">
+        {/* Sidebar - Blocks */}
+        <div className="w-64 border-r border-gray-200 bg-white overflow-y-auto p-4">
+          <h3 className="text-sm font-semibold text-gray-700 mb-3">CONTENT BLOCKS</h3>
+          <div className="space-y-2">
+            {contentBlocks.map((block) => (
+              <button
+                key={block.type}
+                onClick={() => addBlock(block.type, block.template)}
+                className="w-full flex items-center gap-3 p-3 border-2 border-dashed border-gray-300 rounded-lg hover:border-blue-500 hover:bg-blue-50 transition-colors group"
+              >
+                <block.icon className="w-5 h-5 text-gray-400 group-hover:text-blue-600" />
+                <span className="text-sm font-medium text-gray-600 group-hover:text-blue-600">{block.label}</span>
+                <Plus className="w-4 h-4 ml-auto text-gray-400 group-hover:text-blue-600" />
+              </button>
+            ))}
+          </div>
+
+          <div className="mt-6">
+            <h3 className="text-sm font-semibold text-gray-700 mb-3">VARIABLES</h3>
+            <div className="space-y-1.5">
+              {['firstName', 'lastName', 'email', 'phone'].map((v) => (
+                <div key={v} className="px-3 py-2 bg-gray-100 rounded text-xs">
+                  <code className="text-blue-600 font-mono">{`{${v}}`}</code>
+                </div>
+              ))}
+            </div>
+          </div>
+        </div>
+
+        {/* Center - Builder/Preview */}
+        <div className="flex-1 bg-gray-50 overflow-auto">
+          {showCode ? (
+            <div className="p-6">
+              <textarea
+                value={generateHtml()}
+                readOnly
+                className="w-full h-full font-mono text-xs border border-gray-300 rounded-lg p-4"
+              />
+            </div>
+          ) : (
+            <div className="p-8">
+              <div style={{ width: deviceWidths[viewMode], margin: '0 auto', maxWidth: '100%' }} className="bg-white shadow-2xl rounded-lg overflow-hidden">
+                {/* Preview Header */}
+                <div className="bg-gradient-to-r from-blue-600 to-purple-600 p-4 text-white">
+                  <div className="text-sm opacity-90">Preview</div>
+                  <div className="font-semibold">{subject || 'Email Subject'}</div>
+                </div>
+
+                {/* Draggable Blocks */}
+                <div className="p-6">
+                  {blocks.length === 0 ? (
+                    <div className="text-center py-12 text-gray-400">
+                      <Layout className="w-12 h-12 mx-auto mb-3 opacity-50" />
+                      <p>Drag content blocks from the left sidebar</p>
+                      <p className="text-sm">Click + to add blocks to your email</p>
+                    </div>
+                  ) : (
+                    <DndContext sensors={sensors} collisionDetection={closestCenter} onDragEnd={handleDragEnd}>
+                      <SortableContext items={blocks.map(b => b.id)} strategy={verticalListSortingStrategy}>
+                        {blocks.map((block) => (
+                          <SortableBlock key={block.id} block={block} onEdit={editBlock} onDelete={deleteBlock} />
+                        ))}
+                      </SortableContext>
+                    </DndContext>
+                  )}
+                </div>
+              </div>
+            </div>
+          )}
+        </div>
+      </div>
+    </div>
+  );
+}

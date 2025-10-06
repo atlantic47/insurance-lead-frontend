@@ -3,7 +3,7 @@
 
   // Widget configuration
   const WIDGET_CONFIG = {
-    apiBaseUrl: window.CHATBOT_CONFIG?.apiUrl || 'http://localhost:3001/api',
+    apiBaseUrl: window.CHATBOT_CONFIG?.apiUrl || 'http://localhost:3001',
     widgetId: window.CHATBOT_CONFIG?.widgetId || 'default',
     position: window.CHATBOT_CONFIG?.position || 'bottom-right',
     theme: window.CHATBOT_CONFIG?.theme || 'blue',
@@ -289,12 +289,61 @@
 
   // Initialize conversation
   function initializeConversation() {
+    // Try to restore existing conversation from localStorage
+    const storageKey = 'chatbot_conversation_' + WIDGET_CONFIG.widgetId;
+    const stored = localStorage.getItem(storageKey);
+
+    if (stored) {
+      try {
+        const data = JSON.parse(stored);
+        conversationId = data.conversationId;
+        messages = data.messages || [];
+        userInfo = data.userInfo || { name: null, email: null, phone: null };
+
+        // Restore messages to UI
+        const messagesContainer = document.getElementById('chatbot-messages');
+        if (messagesContainer && messages.length > 0) {
+          messagesContainer.innerHTML = '';
+          messages.forEach((msg) => {
+            const messageDiv = document.createElement('div');
+            messageDiv.className = `message ${msg.role}`;
+            messageDiv.textContent = msg.content;
+            messagesContainer.appendChild(messageDiv);
+          });
+          messagesContainer.scrollTop = messagesContainer.scrollHeight;
+        }
+
+        console.log('📝 Restored conversation:', conversationId);
+      } catch (e) {
+        console.error('Failed to restore conversation:', e);
+        startNewConversation();
+      }
+    } else {
+      startNewConversation();
+    }
+  }
+
+  function startNewConversation() {
     conversationId = 'widget_' + Date.now() + '_' + Math.random().toString(36).substr(2, 9);
-    messages.push({
+    messages = [{
       role: 'bot',
       content: WIDGET_CONFIG.greeting,
       timestamp: new Date()
-    });
+    }];
+    userInfo = { name: null, email: null, phone: null };
+    saveConversation();
+    console.log('🆕 Started new conversation:', conversationId);
+  }
+
+  function saveConversation() {
+    const storageKey = 'chatbot_conversation_' + WIDGET_CONFIG.widgetId;
+    const data = {
+      conversationId: conversationId,
+      messages: messages,
+      userInfo: userInfo,
+      lastUpdate: new Date().toISOString()
+    };
+    localStorage.setItem(storageKey, JSON.stringify(data));
   }
 
   // Toggle chatbot window
@@ -375,7 +424,7 @@
     const messageDiv = document.createElement('div');
     messageDiv.className = `message ${role}`;
     messageDiv.textContent = content;
-    
+
     messagesContainer.appendChild(messageDiv);
     messagesContainer.scrollTop = messagesContainer.scrollHeight;
 
@@ -384,6 +433,9 @@
       content: content,
       timestamp: new Date()
     });
+
+    // Save conversation to localStorage after each message
+    saveConversation();
   }
 
   // Show typing indicator
