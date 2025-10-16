@@ -296,8 +296,11 @@ export default function EmailTemplateEditor({
                     <div className="text-sm opacity-90">Preview Mode</div>
                     <div className="font-semibold">{subject || 'Email Subject'}</div>
                   </div>
-                  <div
-                    dangerouslySetInnerHTML={{ __html: htmlContent || '<div style="padding: 40px; text-align: center; color: #9ca3af;">Drag and drop content blocks from the left sidebar to start building your email template</div>' }}
+                  <iframe
+                    srcDoc={htmlContent || '<div style="padding: 40px; text-align: center; color: #9ca3af;">Drag and drop content blocks from the left sidebar to start building your email template</div>'}
+                    className="w-full h-full border-none bg-white"
+                    title="Email Preview"
+                    sandbox="allow-same-origin"
                   />
                 </div>
               </div>

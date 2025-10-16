@@ -283,7 +283,8 @@ export default function HtmlTemplateEditor({
                   srcDoc={renderPreview()}
                   className="w-full h-[800px] border-none"
                   title="Email Preview"
-                  sandbox="allow-same-origin"
+                  sandbox="allow-same-origin allow-scripts allow-popups allow-forms"
+                  referrerPolicy="no-referrer"
                 />
               </div>
             </div>

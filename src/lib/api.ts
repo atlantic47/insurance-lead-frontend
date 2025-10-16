@@ -53,7 +53,47 @@ export const authApi = {
     api.post<AuthResponse>('/auth/login', { email, password }),
   register: (data: { email: string; password: string; firstName: string; lastName: string; role?: string }) =>
     api.post<AuthResponse>('/auth/register', data),
+  registerTenant: (data: {
+    companyName: string;
+    subdomain: string;
+    adminEmail: string;
+    adminPassword: string;
+    adminFirstName: string;
+    adminLastName: string;
+    adminPhone?: string;
+    plan?: string;
+  }) => api.post<any>('/auth/register-tenant', data),
   me: () => api.get<User>('/auth/me'),
+};
+
+export const tenantsApi = {
+  getCurrent: () => api.get('/tenants/current'),
+  getOnboardingStatus: () => api.get('/tenants/onboarding-status'),
+  setupCredentials: (data: {
+    whatsapp?: {
+      accessToken: string;
+      phoneNumberId: string;
+      webhookVerifyToken?: string;
+      businessAccountId?: string;
+      appSecret?: string;
+    };
+    facebook?: {
+      accessToken: string;
+      pageId: string;
+      appSecret?: string;
+      webhookVerifyToken?: string;
+    };
+    email?: {
+      host: string;
+      port: number;
+      user: string;
+      pass: string;
+      secure?: boolean;
+    };
+  }) => api.put('/tenants/setup-credentials', data),
+  getWebhookUrls: () => api.get('/tenants/webhook-urls'),
+  completeOnboarding: () => api.put('/tenants/complete-onboarding'),
+  getTrialStatus: () => api.get('/tenants/trial-status'),
 };
 
 export const leadsApi = {

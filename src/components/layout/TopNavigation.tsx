@@ -1,14 +1,40 @@
 'use client';
 
+import { useState } from 'react';
 import { useAuthStore } from '@/store/auth';
 import { Building2, Search, Bell, Settings, HelpCircle } from 'lucide-react';
+import { useQuery, useQueryClient } from '@tanstack/react-query';
+import axios from 'axios';
+
+const api = axios.create({
+  baseURL: process.env.NEXT_PUBLIC_API_URL || 'http://localhost:3001',
+});
 
 export default function TopNavigation() {
   const { user, logout } = useAuthStore();
+  const [showNotifications, setShowNotifications] = useState(false);
+  const queryClient = useQueryClient();
+
+  const { data: notifications } = useQuery({
+    queryKey: ['notifications', 'unread'],
+    queryFn: () => api.get('/notifications/unread').then((r: any) => r.data),
+    refetchInterval: 30000, // Poll every 30s
+  });
+
+  const { data: unreadCount } = useQuery({
+    queryKey: ['notifications', 'count'],
+    queryFn: () => api.get('/notifications/count').then((r: any) => r.data.count),
+    refetchInterval: 30000,
+  });
 
   const handleLogout = () => {
     logout();
     window.location.href = '/login';
+  };
+
+  const handleMarkAsRead = async (id: string) => {
+    await api.patch(`/notifications/${id}/read`);
+    queryClient.invalidateQueries({ queryKey: ['notifications'] });
   };
 
   return (
@@ -48,9 +74,59 @@ export default function TopNavigation() {
         </div>
 
         {/* Notifications */}
-        <button className="p-2 text-white/80 hover:text-white hover:bg-white/10 rounded transition-colors">
-          <Bell className="w-5 h-5" />
-        </button>
+        <div className="relative">
+          <button
+            onClick={() => setShowNotifications(!showNotifications)}
+            className="p-2 text-white/80 hover:text-white hover:bg-white/10 rounded transition-colors relative"
+          >
+            <Bell className="w-5 h-5" />
+            {unreadCount > 0 && (
+              <span className="absolute top-1 right-1 w-2 h-2 bg-red-500 rounded-full"></span>
+            )}
+          </button>
+
+          {showNotifications && (
+            <>
+              <div
+                className="fixed inset-0 z-10"
+                onClick={() => setShowNotifications(false)}
+              />
+              <div className="absolute right-0 top-12 w-80 bg-white rounded-lg shadow-lg border border-gray-200 max-h-96 overflow-y-auto z-20">
+                <div className="p-4 border-b border-gray-200 flex items-center justify-between">
+                  <h3 className="font-semibold text-gray-900">Notifications</h3>
+                  {unreadCount > 0 && (
+                    <span className="text-xs bg-red-500 text-white px-2 py-1 rounded-full">
+                      {unreadCount}
+                    </span>
+                  )}
+                </div>
+
+                {notifications && notifications.length > 0 ? (
+                  <div className="divide-y divide-gray-200">
+                    {notifications.map((notif: any) => (
+                      <div
+                        key={notif.id}
+                        onClick={() => handleMarkAsRead(notif.id)}
+                        className="p-4 hover:bg-gray-50 cursor-pointer transition-colors"
+                      >
+                        <p className="font-medium text-sm text-gray-900">{notif.title}</p>
+                        <p className="text-xs text-gray-600 mt-1">{notif.message}</p>
+                        <p className="text-xs text-gray-400 mt-2">
+                          {new Date(notif.createdAt).toLocaleString()}
+                        </p>
+                      </div>
+                    ))}
+                  </div>
+                ) : (
+                  <div className="p-8 text-center text-gray-500">
+                    <Bell className="w-12 h-12 mx-auto mb-2 text-gray-300" />
+                    <p>No new notifications</p>
+                  </div>
+                )}
+              </div>
+            </>
+          )}
+        </div>
 
         {/* Help */}
         <button className="p-2 text-white/80 hover:text-white hover:bg-white/10 rounded transition-colors">

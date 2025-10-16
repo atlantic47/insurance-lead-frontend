@@ -451,38 +451,58 @@ export default function AIConversationsPage() {
 
                 {/* Messages */}
                 <div className="flex-1 overflow-y-auto p-6 space-y-4 bg-gray-50">
-                  {selectedConversation.chatMessages.map((message) => (
-                    <div key={message.id} className={`flex ${message.sender !== 'CUSTOMER' ? 'justify-end' : 'justify-start'}`}>
-                      <div className={`max-w-xs lg:max-w-md ${message.sender !== 'CUSTOMER' ? 'order-1' : ''}`}>
-                        <div
-                          className={`px-4 py-2 rounded-2xl ${
-                            message.sender === 'CUSTOMER'
-                              ? 'bg-white text-gray-900 shadow-sm'
-                              : message.sender === 'AI_ASSISTANT'
-                              ? 'bg-gradient-to-r from-blue-500 to-indigo-500 text-white'
-                              : 'bg-gradient-to-r from-green-500 to-emerald-500 text-white'
-                          }`}
-                        >
-                          <p className="text-sm">{message.content}</p>
-                          {message.sender === 'AI_ASSISTANT' && (
-                            <p className="text-xs opacity-75 mt-1 flex items-center gap-1">
-                              <Bot className="w-3 h-3" /> AI Assistant
-                            </p>
-                          )}
-                          {message.sender === 'HUMAN_AGENT' && message.metadata?.agentName && (
-                            <p className="text-xs opacity-75 mt-1 flex items-center gap-1">
-                              <User className="w-3 h-3" /> {message.metadata.agentName}
-                            </p>
-                          )}
+                  {selectedConversation.chatMessages.map((message) => {
+                    // Check if this is a system/handover message
+                    const isSystemMessage = message.metadata?.system || message.metadata?.handover;
+
+                    if (isSystemMessage) {
+                      return (
+                        <div key={message.id} className="flex justify-center">
+                          <div className="max-w-md">
+                            <div className="px-4 py-2 rounded-xl bg-yellow-50 border border-yellow-200 text-yellow-900 text-center">
+                              <p className="text-sm">{message.content}</p>
+                            </div>
+                            <div className="flex items-center justify-center mt-1 text-xs text-gray-500">
+                              <span>{formatTime(message.createdAt)}</span>
+                            </div>
+                          </div>
                         </div>
-                        <div className={`flex items-center mt-1 text-xs text-gray-500 ${
-                          message.sender !== 'CUSTOMER' ? 'justify-end' : 'justify-start'
-                        }`}>
-                          <span>{formatTime(message.createdAt)}</span>
+                      );
+                    }
+
+                    return (
+                      <div key={message.id} className={`flex ${message.sender !== 'CUSTOMER' ? 'justify-end' : 'justify-start'}`}>
+                        <div className={`max-w-xs lg:max-w-md ${message.sender !== 'CUSTOMER' ? 'order-1' : ''}`}>
+                          <div
+                            className={`px-4 py-2 rounded-2xl ${
+                              message.sender === 'CUSTOMER'
+                                ? 'bg-white text-gray-900 shadow-sm'
+                                : message.sender === 'AI_ASSISTANT'
+                                ? 'bg-gradient-to-r from-blue-500 to-indigo-500 text-white'
+                                : 'bg-gradient-to-r from-green-500 to-emerald-500 text-white'
+                            }`}
+                          >
+                            <p className="text-sm">{message.content}</p>
+                            {message.sender === 'AI_ASSISTANT' && !isSystemMessage && (
+                              <p className="text-xs opacity-75 mt-1 flex items-center gap-1">
+                                <Bot className="w-3 h-3" /> AI Assistant
+                              </p>
+                            )}
+                            {message.sender === 'HUMAN_AGENT' && message.metadata?.agentName && (
+                              <p className="text-xs opacity-75 mt-1 flex items-center gap-1">
+                                <User className="w-3 h-3" /> {message.metadata.agentName}
+                              </p>
+                            )}
+                          </div>
+                          <div className={`flex items-center mt-1 text-xs text-gray-500 ${
+                            message.sender !== 'CUSTOMER' ? 'justify-end' : 'justify-start'
+                          }`}>
+                            <span>{formatTime(message.createdAt)}</span>
+                          </div>
                         </div>
                       </div>
-                    </div>
-                  ))}
+                    );
+                  })}
                 </div>
 
                 {/* Message Input */}

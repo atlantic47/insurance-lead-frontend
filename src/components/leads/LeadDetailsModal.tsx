@@ -15,11 +15,13 @@ import {
   MessageSquare,
   CheckSquare,
   Bot,
-  Edit
+  Edit,
+  Plus
 } from 'lucide-react';
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import { communicationsApi, tasksApi, leadsApi } from '@/lib/api';
 import EditLeadModal from './EditLeadModal';
+import CreateTaskModal from '../tasks/CreateTaskModal';
 
 interface LeadDetailsModalProps {
   lead: Lead | null;
@@ -30,6 +32,7 @@ interface LeadDetailsModalProps {
 export default function LeadDetailsModal({ lead, isOpen, onClose }: LeadDetailsModalProps) {
   const [activeTab, setActiveTab] = useState<'details' | 'communications' | 'tasks' | 'ai'>('details');
   const [isEditModalOpen, setIsEditModalOpen] = useState(false);
+  const [showCreateTask, setShowCreateTask] = useState(false);
   const queryClient = useQueryClient();
 
   const { data: communications } = useQuery({
@@ -67,6 +70,7 @@ export default function LeadDetailsModal({ lead, isOpen, onClose }: LeadDetailsM
   ];
 
   return (
+    <>
     <Transition appear show={isOpen} as={Fragment}>
       <Dialog as="div" className="relative z-10" onClose={onClose}>
         <Transition.Child
@@ -286,7 +290,16 @@ export default function LeadDetailsModal({ lead, isOpen, onClose }: LeadDetailsM
 
                     {activeTab === 'tasks' && (
                       <div className="space-y-4">
-                        <h4 className="text-lg font-medium text-gray-900">Related Tasks</h4>
+                        <div className="flex items-center justify-between">
+                          <h4 className="text-lg font-medium text-gray-900">Related Tasks</h4>
+                          <button
+                            onClick={() => setShowCreateTask(true)}
+                            className="jira-button-primary flex items-center gap-2"
+                          >
+                            <Plus className="w-4 h-4" />
+                            Create Task
+                          </button>
+                        </div>
                         {tasks?.data && tasks.data.length > 0 ? (
                           <div className="space-y-3">
                             {tasks.data.map((task: any) => (
@@ -310,7 +323,16 @@ export default function LeadDetailsModal({ lead, isOpen, onClose }: LeadDetailsM
                             ))}
                           </div>
                         ) : (
-                          <p className="text-gray-500 text-center py-8">No tasks assigned</p>
+                          <div className="text-center py-8">
+                            <p className="text-gray-500 mb-4">No tasks assigned</p>
+                            <button
+                              onClick={() => setShowCreateTask(true)}
+                              className="jira-button-secondary flex items-center gap-2 mx-auto"
+                            >
+                              <Plus className="w-4 h-4" />
+                              Create First Task
+                            </button>
+                          </div>
                         )}
                       </div>
                     )}
@@ -351,5 +373,18 @@ export default function LeadDetailsModal({ lead, isOpen, onClose }: LeadDetailsM
         />
       </Dialog>
     </Transition>
+
+    {showCreateTask && lead && (
+      <CreateTaskModal
+        isOpen={showCreateTask}
+        onClose={() => setShowCreateTask(false)}
+        selectedLead={lead || undefined}
+        onSuccess={() => {
+          setShowCreateTask(false);
+          queryClient.invalidateQueries({ queryKey: ['tasks', 'lead', lead?.id] });
+        }}
+      />
+    )}
+  </>
   );
 }

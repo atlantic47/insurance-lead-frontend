@@ -6,11 +6,12 @@ import LeadPipeline from '@/components/leads/LeadPipeline';
 import CreateLeadModal from '@/components/leads/CreateLeadModal';
 import LeadDetailsModal from '@/components/leads/LeadDetailsModal';
 import EditLeadModal from '@/components/leads/EditLeadModal';
+import CreateTaskModal from '@/components/tasks/CreateTaskModal';
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
-import { leadsApi } from '@/lib/api';
+import { leadsApi, tasksApi } from '@/lib/api';
 import { Lead } from '@/types';
 import { getStatusColor, formatDate } from '@/lib/utils';
-import { Filter, Search, Download, Eye, Edit, MessageCircle, Mail, MoreVertical, ChevronLeft, ChevronRight } from 'lucide-react';
+import { Filter, Search, Download, Eye, Edit, MessageCircle, Mail, MoreVertical, ChevronLeft, ChevronRight, CheckSquare } from 'lucide-react';
 import { useRouter } from 'next/navigation';
 
 export default function LeadsPage() {
@@ -18,6 +19,8 @@ export default function LeadsPage() {
   const [isCreateModalOpen, setIsCreateModalOpen] = useState(false);
   const [isDetailsModalOpen, setIsDetailsModalOpen] = useState(false);
   const [isEditModalOpen, setIsEditModalOpen] = useState(false);
+  const [isCreateTaskModalOpen, setIsCreateTaskModalOpen] = useState(false);
+  const [selectedLeadForTask, setSelectedLeadForTask] = useState<Lead | null>(null);
   const [searchInput, setSearchInput] = useState('');
   const [searchTerm, setSearchTerm] = useState('');
   const [viewMode, setViewMode] = useState<'pipeline' | 'list'>('list');
@@ -74,8 +77,21 @@ export default function LeadsPage() {
     },
   });
 
+  const createTaskMutation = useMutation({
+    mutationFn: tasksApi.create,
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ['tasks'] });
+      setIsCreateTaskModalOpen(false);
+      setSelectedLeadForTask(null);
+    },
+  });
+
   const handleCreateLead = async (data: any) => {
     await createLeadMutation.mutateAsync(data);
+  };
+
+  const handleCreateTask = async (data: any) => {
+    await createTaskMutation.mutateAsync(data);
   };
 
   const handleUpdateLead = async (id: string, data: any) => {
@@ -503,6 +519,18 @@ export default function LeadsPage() {
                                       <Mail className="w-4 h-4 mr-3 text-indigo-600" />
                                       Email
                                     </button>
+                                    <button
+                                      onClick={(e) => {
+                                        e.stopPropagation();
+                                        setSelectedLeadForTask(lead);
+                                        setIsCreateTaskModalOpen(true);
+                                        setOpenDropdownId(null);
+                                      }}
+                                      className="w-full text-left px-4 py-2 text-sm text-gray-700 hover:bg-gray-100 flex items-center"
+                                    >
+                                      <CheckSquare className="w-4 h-4 mr-3 text-orange-600" />
+                                      Create Task
+                                    </button>
                                   </div>
                                 </div>
                               </>
@@ -607,6 +635,17 @@ export default function LeadsPage() {
           onClose={() => setIsEditModalOpen(false)}
           onSubmit={handleUpdateLead}
           isLoading={updateLeadMutation.isPending}
+        />
+
+        <CreateTaskModal
+          isOpen={isCreateTaskModalOpen}
+          onClose={() => {
+            setIsCreateTaskModalOpen(false);
+            setSelectedLeadForTask(null);
+          }}
+          selectedLead={selectedLeadForTask || undefined}
+          onSubmit={handleCreateTask}
+          isLoading={createTaskMutation.isPending}
         />
       </div>
     </DashboardLayout>

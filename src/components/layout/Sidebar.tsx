@@ -5,7 +5,6 @@ import { usePathname } from 'next/navigation';
 import {
   BarChart3,
   Users,
-  MessageSquare,
   CheckSquare,
   Package,
   UserCheck,
@@ -30,7 +29,6 @@ const navigation = [
   { name: 'WhatsApp Chat', href: '/chat', icon: MessageCircle, badge: '3' },
   { name: 'AI Conversations', href: '/ai-conversations', icon: Globe, badge: null },
   { name: 'Emails', href: '/emails', icon: Mail, badge: '12' },
-  { name: 'Communications', href: '/communications', icon: MessageSquare, badge: null },
   { name: 'Contacts', href: '/contacts', icon: UsersRound, badge: null },
   { name: 'Campaigns', href: '/campaigns', icon: Megaphone, badge: null },
   { name: 'Tasks', href: '/tasks', icon: CheckSquare, badge: '5' },

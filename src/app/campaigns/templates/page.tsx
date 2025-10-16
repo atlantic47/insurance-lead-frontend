@@ -609,7 +609,7 @@ export default function CampaignTemplatesPage() {
       {/* HTML Template Editor */}
       {showHtmlEditor && (
         <EmailBuilder
-          initialHtml={editingHtmlTemplate?.htmlContent || ''}
+          initialHtml={editingHtmlTemplate?.htmlContent || editingHtmlTemplate?.content || ''}
           initialName={editingHtmlTemplate?.name || ''}
           initialSubject={editingHtmlTemplate?.subject || ''}
           initialDescription={editingHtmlTemplate?.description || ''}
