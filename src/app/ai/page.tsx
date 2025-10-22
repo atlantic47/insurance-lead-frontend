@@ -57,6 +57,12 @@ export default function AIPage() {
 
   const queryClient = useQueryClient();
 
+  // Fetch widget config with tenant-specific token
+  const { data: widgetConfigFromServer, isLoading: isLoadingWidgetToken } = useQuery({
+    queryKey: ['widget-config'],
+    queryFn: () => aiApi.getWidgetConfig().then(res => res.data),
+  });
+
   const { data: conversationsResponse, isLoading: conversationsLoading } = useQuery({
     queryKey: ['ai-conversations'],
     queryFn: () => aiApi.getConversations({ limit: 50 }).then(res => res.data),
@@ -1255,11 +1261,16 @@ export default function AIPage() {
                       <h4 className="text-md font-medium text-gray-900">Embed Code</h4>
                       <button
                         onClick={() => {
+                          if (!widgetConfigFromServer?.widgetToken) {
+                            alert('⏳ Please wait while we generate your widget token...');
+                            return;
+                          }
                           const embedCode = `<!-- AI Chat Widget -->
 <script>
   window.CHATBOT_CONFIG = {
     apiUrl: '${typeof window !== 'undefined' ? window.location.origin.replace(':3000', ':3001') : 'http://localhost:3001'}',
     widgetId: 'default',
+    widgetToken: '${widgetConfigFromServer.widgetToken}',
     title: '${widgetConfig.title}',
     subtitle: '${widgetConfig.subtitle}',
     buttonText: '${widgetConfig.buttonText}',
@@ -1276,20 +1287,27 @@ export default function AIPage() {
                           navigator.clipboard.writeText(embedCode);
                           alert('✅ Code copied to clipboard!');
                         }}
-                        className="inline-flex items-center px-4 py-2 bg-gradient-to-r from-blue-600 to-indigo-600 text-white rounded-lg hover:from-blue-700 hover:to-indigo-700 transition-all shadow-sm font-medium"
+                        disabled={isLoadingWidgetToken || !widgetConfigFromServer?.widgetToken}
+                        className={`inline-flex items-center px-4 py-2 ${isLoadingWidgetToken || !widgetConfigFromServer?.widgetToken ? 'bg-gray-400 cursor-not-allowed' : 'bg-gradient-to-r from-blue-600 to-indigo-600 hover:from-blue-700 hover:to-indigo-700'} text-white rounded-lg transition-all shadow-sm font-medium`}
                       >
                         <Download className="w-4 h-4 mr-2" />
-                        Copy Embed Code
+                        {isLoadingWidgetToken ? 'Generating Token...' : 'Copy Embed Code'}
                       </button>
                     </div>
 
                     <div className="bg-gray-900 rounded-lg p-4 border border-gray-700 overflow-x-auto">
-                      <pre className="text-sm text-green-400 font-mono">
+                      {isLoadingWidgetToken ? (
+                        <div className="text-yellow-400 font-mono text-sm flex items-center">
+                          <span className="animate-pulse">⏳ Generating your unique widget token...</span>
+                        </div>
+                      ) : (
+                        <pre className="text-sm text-green-400 font-mono">
 {`<!-- AI Chat Widget -->
 <script>
   window.CHATBOT_CONFIG = {
     apiUrl: '${typeof window !== 'undefined' ? window.location.origin.replace(':3000', ':3001') : 'http://localhost:3001'}',
     widgetId: 'default',
+    widgetToken: '${widgetConfigFromServer?.widgetToken || 'ERROR: Token not generated'}',
     title: '${widgetConfig.title}',
     subtitle: '${widgetConfig.subtitle}',
     buttonText: '${widgetConfig.buttonText}',
@@ -1303,7 +1321,8 @@ export default function AIPage() {
 </script>
 <script src="${typeof window !== 'undefined' ? window.location.origin.replace(':3000', ':3001') : 'http://localhost:3001'}/widget/chatbot-widget.js"></script>
 <!-- End AI Chat Widget -->`}
-                      </pre>
+                        </pre>
+                      )}
                     </div>
 
                     <div className="mt-4 p-4 bg-gradient-to-r from-blue-50 to-indigo-50 rounded-lg border border-blue-200">

@@ -165,6 +165,8 @@ export const aiApi = {
   testAi: (message: string) => api.post('/ai/training/test', { message }),
   getTrainingData: () => api.get('/ai/training/data'),
   deleteTrainingData: (id: string) => api.delete(`/ai/training/data/${id}`),
+  getWidgetConfig: () => api.get('/ai/widget/config/settings'),
+  saveWidgetConfig: (config: any) => api.put('/ai/widget/config/settings', config),
 };
 
 export const chatApi = {
