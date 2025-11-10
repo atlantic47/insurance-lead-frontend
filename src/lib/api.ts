@@ -165,6 +165,9 @@ export const aiApi = {
   testAi: (message: string) => api.post('/ai/training/test', { message }),
   getTrainingData: () => api.get('/ai/training/data'),
   deleteTrainingData: (id: string) => api.delete(`/ai/training/data/${id}`),
+  updateTrainingData: (id: string, data: { instructions: string }) => api.put(`/ai/training/data/${id}`, data),
+  getWidgetConfig: () => api.get('/ai/widget/config/settings'),
+  saveWidgetConfig: (config: any) => api.put('/ai/widget/config/settings', config),
 };
 
 export const chatApi = {
@@ -294,6 +297,30 @@ export const settingsApi = {
     isEncrypted?: boolean;
     description?: string;
   }>) => api.post('/settings/bulk-update', settings),
+};
+
+export const credentialsApi = {
+  // Email Credentials
+  getEmailCredentials: () => api.get('/credentials/email'),
+  getEmailCredential: (id: string) => api.get(`/credentials/email/${id}`),
+  getDefaultEmailCredential: () => api.get('/credentials/email/default'),
+  createEmailCredential: (data: any) => api.post('/credentials/email', data),
+  updateEmailCredential: (id: string, data: any) => api.patch(`/credentials/email/${id}`, data),
+  deleteEmailCredential: (id: string) => api.delete(`/credentials/email/${id}`),
+  setDefaultEmailCredential: (id: string) => api.post(`/credentials/email/${id}/set-default`),
+  testEmailCredential: (id: string) => api.post(`/credentials/email/${id}/test`),
+
+  // WhatsApp Credentials
+  getWhatsAppCredentials: () => api.get('/credentials/whatsapp'),
+  getWhatsAppCredential: (id: string) => api.get(`/credentials/whatsapp/${id}`),
+  getDefaultWhatsAppCredential: () => api.get('/credentials/whatsapp/default'),
+  getDefaultWhatsAppWebhookInfo: () => api.get('/credentials/whatsapp/default/webhook'),
+  getWhatsAppWebhookInfo: (id: string) => api.get(`/credentials/whatsapp/${id}/webhook`),
+  createWhatsAppCredential: (data: any) => api.post('/credentials/whatsapp', data),
+  updateWhatsAppCredential: (id: string, data: any) => api.patch(`/credentials/whatsapp/${id}`, data),
+  deleteWhatsAppCredential: (id: string) => api.delete(`/credentials/whatsapp/${id}`),
+  setDefaultWhatsAppCredential: (id: string) => api.post(`/credentials/whatsapp/${id}/set-default`),
+  regenerateWhatsAppWebhook: (id: string) => api.post(`/credentials/whatsapp/${id}/regenerate-webhook`),
 };
 
 export default api;

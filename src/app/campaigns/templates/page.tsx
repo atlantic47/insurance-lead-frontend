@@ -270,10 +270,17 @@ export default function CampaignTemplatesPage() {
                   </div>
                   <div className="flex gap-2">
                     <button
-                      onClick={() => {
+                      onClick={async () => {
                         if (template.type === 'EMAIL') {
-                          setEditingHtmlTemplate(template);
-                          setShowHtmlEditor(true);
+                          // Fetch full template with htmlContent before editing
+                          try {
+                            const response = await campaignsApi.getTemplate(template.id);
+                            setEditingHtmlTemplate(response.data);
+                            setShowHtmlEditor(true);
+                          } catch (error) {
+                            console.error('Failed to fetch template:', error);
+                            alert('Failed to load template');
+                          }
                         } else {
                           setEditingTemplate(template);
                         }

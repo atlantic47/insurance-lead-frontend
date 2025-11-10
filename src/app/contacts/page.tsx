@@ -463,14 +463,14 @@ export default function ContactsPage() {
                   <div className="border border-gray-300 rounded-lg p-4">
                     <div className="mb-3">
                       <div className="relative">
-                        <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-gray-400" />
                         <input
                           type="text"
                           placeholder="Search leads..."
                           value={leadSearch}
                           onChange={(e) => setLeadSearch(e.target.value)}
-                          className="w-full pl-10 pr-4 py-2 border border-gray-200 rounded-lg text-sm"
+                          className="w-full pl-4 pr-10 py-2 border border-gray-200 rounded-lg text-sm"
                         />
+                        <Search className="absolute right-3 top-1/2 -translate-y-1/2 w-4 h-4 text-gray-400" />
                       </div>
                     </div>
 

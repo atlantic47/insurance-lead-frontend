@@ -72,7 +72,22 @@ export default function AIConversationsPage() {
         setIsLoading(true);
       }
 
-      const token = localStorage.getItem('token');
+      // Read token from auth-storage (Zustand persist storage)
+      const authStorage = localStorage.getItem('auth-storage');
+      let token = null;
+      if (authStorage) {
+        try {
+          const parsedAuth = JSON.parse(authStorage);
+          token = parsedAuth.state?.token;
+        } catch (error) {
+          console.error('Failed to parse auth storage:', error);
+        }
+      }
+
+      if (!token) {
+        throw new Error('No authentication token found');
+      }
+
       const response = await fetch('http://localhost:3001/ai/widget/conversations?limit=50&page=1', {
         headers: {
           'Authorization': `Bearer ${token}`,
@@ -161,7 +176,22 @@ export default function AIConversationsPage() {
     setIsSending(true);
 
     try {
-      const token = localStorage.getItem('token');
+      // Read token from auth-storage (Zustand persist storage)
+      const authStorage = localStorage.getItem('auth-storage');
+      let token = null;
+      if (authStorage) {
+        try {
+          const parsedAuth = JSON.parse(authStorage);
+          token = parsedAuth.state?.token;
+        } catch (error) {
+          console.error('Failed to parse auth storage:', error);
+        }
+      }
+
+      if (!token) {
+        throw new Error('No authentication token found');
+      }
+
       await fetch(`http://localhost:3001/ai/widget/conversations/${selectedConversation.id}/message`, {
         method: 'POST',
         headers: {
@@ -194,7 +224,22 @@ export default function AIConversationsPage() {
 
   const takeoverConversation = async (conversationId: string) => {
     try {
-      const token = localStorage.getItem('token');
+      // Read token from auth-storage (Zustand persist storage)
+      const authStorage = localStorage.getItem('auth-storage');
+      let token = null;
+      if (authStorage) {
+        try {
+          const parsedAuth = JSON.parse(authStorage);
+          token = parsedAuth.state?.token;
+        } catch (error) {
+          console.error('Failed to parse auth storage:', error);
+        }
+      }
+
+      if (!token) {
+        throw new Error('No authentication token found');
+      }
+
       await fetch(`http://localhost:3001/ai/widget/conversations/${conversationId}/takeover`, {
         method: 'POST',
         headers: {

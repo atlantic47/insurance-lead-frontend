@@ -1,6 +1,6 @@
 'use client';
 
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
 import {
   DndContext,
   closestCenter,
@@ -66,10 +66,18 @@ function SortableBlock({ block, onEdit, onDelete, isSelected, onSelect }: {
 
   const [isEditing, setIsEditing] = useState(false);
   const [editContent, setEditContent] = useState(block.content);
+  const [showVisualEditor, setShowVisualEditor] = useState(false);
 
   const handleSave = () => {
     onEdit(block.id, editContent);
     setIsEditing(false);
+    setShowVisualEditor(false);
+  };
+
+  const handleCancel = () => {
+    setEditContent(block.content); // Reset to original
+    setIsEditing(false);
+    setShowVisualEditor(false);
   };
 
   return (
@@ -92,21 +100,31 @@ function SortableBlock({ block, onEdit, onDelete, isSelected, onSelect }: {
 
       {/* Top Action Bar */}
       {isSelected && (
-        <div className="absolute -top-11 left-0 right-0 flex items-center justify-end gap-2 px-3 py-2 bg-white border border-gray-200 rounded-t-xl shadow-sm">
+        <div className="absolute -top-12 left-0 right-0 flex items-center justify-end gap-2 px-3 py-2.5 bg-white border border-gray-200 rounded-t-xl shadow-md z-20">
           <span className="text-xs text-gray-500 mr-auto font-medium">{block.type.toUpperCase()}</span>
+          {block.type === 'html' && (
+            <button
+              onClick={(e) => { e.stopPropagation(); setShowVisualEditor(true); }}
+              className="px-3 py-1.5 bg-green-50 hover:bg-green-100 rounded-md text-green-700 transition-colors text-xs font-semibold border border-green-200"
+              title="Edit Content Visually"
+            >
+              <Edit3 className="w-3.5 h-3.5 inline mr-1.5" />
+              Edit Content
+            </button>
+          )}
           <button
             onClick={(e) => { e.stopPropagation(); setIsEditing(!isEditing); }}
-            className="p-1.5 hover:bg-blue-50 rounded-md text-blue-600 transition-colors"
-            title="Edit"
+            className="p-2 hover:bg-blue-50 rounded-md text-blue-600 transition-colors border border-transparent hover:border-blue-200"
+            title="Edit HTML Code"
           >
-            <Edit3 className="w-3.5 h-3.5" />
+            <Code className="w-4 h-4" />
           </button>
           <button
             onClick={(e) => { e.stopPropagation(); onDelete(block.id); }}
-            className="p-1.5 hover:bg-red-50 rounded-md text-red-600 transition-colors"
+            className="p-2 hover:bg-red-50 rounded-md text-red-600 transition-colors border border-transparent hover:border-red-200"
             title="Delete"
           >
-            <Trash2 className="w-3.5 h-3.5" />
+            <Trash2 className="w-4 h-4" />
           </button>
         </div>
       )}
@@ -114,25 +132,302 @@ function SortableBlock({ block, onEdit, onDelete, isSelected, onSelect }: {
       {/* Content */}
       {isEditing ? (
         <div className="p-5 bg-gradient-to-br from-blue-50 to-indigo-50 rounded-xl">
-          <label className="block text-xs font-semibold text-gray-700 mb-2 uppercase tracking-wide">Edit Content</label>
+          <label className="block text-xs font-semibold text-gray-700 mb-2 uppercase tracking-wide">Edit HTML Code</label>
           <textarea
             value={editContent}
             onChange={(e) => setEditContent(e.target.value)}
             className="w-full px-4 py-3 border border-gray-300 rounded-lg mb-3 font-mono text-sm focus:ring-2 focus:ring-blue-500 focus:border-transparent"
-            rows={6}
+            rows={12}
           />
           <div className="flex gap-2">
             <button onClick={handleSave} className="px-4 py-2 bg-blue-600 text-white rounded-lg text-sm font-medium hover:bg-blue-700 transition-colors shadow-sm">
               Save Changes
             </button>
-            <button onClick={() => setIsEditing(false)} className="px-4 py-2 bg-white border border-gray-300 text-gray-700 rounded-lg text-sm font-medium hover:bg-gray-50 transition-colors">
+            <button onClick={handleCancel} className="px-4 py-2 bg-white border border-gray-300 text-gray-700 rounded-lg text-sm font-medium hover:bg-gray-50 transition-colors">
               Cancel
             </button>
           </div>
         </div>
       ) : (
-        <div className="p-5" dangerouslySetInnerHTML={{ __html: block.content }} />
+        block.type === 'html' ? (
+          // Use iframe for full HTML templates to preserve styling
+          <div className="p-5 relative">
+            {/* Floating Edit Button - Always visible for HTML blocks */}
+            <button
+              onClick={(e) => { e.stopPropagation(); setShowVisualEditor(true); }}
+              className="absolute top-8 right-8 z-10 px-4 py-2 bg-green-600 hover:bg-green-700 text-white rounded-lg shadow-lg transition-all text-sm font-semibold flex items-center gap-2"
+              title="Edit Content Visually"
+            >
+              <Edit3 className="w-4 h-4" />
+              Edit Content
+            </button>
+            <iframe
+              srcDoc={block.content}
+              className="w-full border-0"
+              style={{ minHeight: '600px', height: 'auto' }}
+              title="Email Preview"
+              sandbox="allow-same-origin"
+            />
+          </div>
+        ) : (
+          <div className="p-5" dangerouslySetInnerHTML={{ __html: block.content }} />
+        )
       )}
+
+      {/* Visual Content Editor Modal */}
+      {showVisualEditor && block.type === 'html' && (
+        <VisualHtmlEditor
+          html={editContent}
+          onSave={(newHtml) => {
+            setEditContent(newHtml);
+            onEdit(block.id, newHtml);
+            setShowVisualEditor(false);
+          }}
+          onClose={() => setShowVisualEditor(false)}
+        />
+      )}
+    </div>
+  );
+}
+
+// Visual HTML Editor Component
+function VisualHtmlEditor({ html, onSave, onClose }: {
+  html: string;
+  onSave: (html: string) => void;
+  onClose: () => void;
+}) {
+  const [editedHtml, setEditedHtml] = useState(html);
+  const [activeTab, setActiveTab] = useState<'preview' | 'text' | 'images'>('preview');
+
+  // Extract all text nodes and their positions
+  const extractTextNodes = (htmlString: string) => {
+    const parser = new DOMParser();
+    const doc = parser.parseFromString(htmlString, 'text/html');
+    const textNodes: { path: string; text: string; tag: string }[] = [];
+
+    const walk = (node: Node, path: string = '') => {
+      if (node.nodeType === Node.TEXT_NODE && node.textContent?.trim()) {
+        const parent = node.parentElement;
+        if (parent && parent.tagName !== 'SCRIPT' && parent.tagName !== 'STYLE') {
+          textNodes.push({
+            path,
+            text: node.textContent.trim(),
+            tag: parent.tagName,
+          });
+        }
+      } else if (node.nodeType === Node.ELEMENT_NODE) {
+        const element = node as Element;
+        Array.from(element.childNodes).forEach((child, index) => {
+          walk(child, `${path}>${element.tagName}[${index}]`);
+        });
+      }
+    };
+
+    walk(doc.body);
+    return textNodes;
+  };
+
+  // Extract all images
+  const extractImages = (htmlString: string) => {
+    const parser = new DOMParser();
+    const doc = parser.parseFromString(htmlString, 'text/html');
+    const images: { src: string; alt: string; index: number }[] = [];
+
+    doc.querySelectorAll('img').forEach((img, index) => {
+      images.push({
+        src: img.getAttribute('src') || '',
+        alt: img.getAttribute('alt') || '',
+        index,
+      });
+    });
+
+    return images;
+  };
+
+  const [textNodes] = useState(extractTextNodes(html));
+  const [images, setImages] = useState(extractImages(html));
+
+  // Update text in HTML
+  const updateText = (oldText: string, newText: string) => {
+    setEditedHtml(editedHtml.replace(oldText, newText));
+  };
+
+  // Update image src
+  const updateImage = (index: number, newSrc: string, newAlt: string) => {
+    const parser = new DOMParser();
+    const doc = parser.parseFromString(editedHtml, 'text/html');
+    const imgElements = doc.querySelectorAll('img');
+
+    if (imgElements[index]) {
+      imgElements[index].setAttribute('src', newSrc);
+      imgElements[index].setAttribute('alt', newAlt);
+
+      const updatedImages = [...images];
+      updatedImages[index] = { ...updatedImages[index], src: newSrc, alt: newAlt };
+      setImages(updatedImages);
+
+      setEditedHtml(doc.documentElement.outerHTML);
+    }
+  };
+
+  return (
+    <div className="fixed inset-0 bg-black/50 z-[200] flex items-center justify-center p-4" onClick={onClose}>
+      <div className="bg-white rounded-2xl shadow-2xl max-w-6xl w-full max-h-[90vh] overflow-hidden flex flex-col" onClick={(e) => e.stopPropagation()}>
+        {/* Header */}
+        <div className="px-6 py-4 border-b border-gray-200 flex items-center justify-between bg-gradient-to-r from-green-50 to-emerald-50">
+          <div>
+            <h2 className="text-xl font-bold text-gray-900">Edit Template Content</h2>
+            <p className="text-sm text-gray-600 mt-0.5">Update text and images directly</p>
+          </div>
+          <button onClick={onClose} className="p-2 hover:bg-white rounded-lg transition-colors">
+            <X className="w-5 h-5 text-gray-600" />
+          </button>
+        </div>
+
+        {/* Tabs */}
+        <div className="px-6 py-3 border-b border-gray-200 flex gap-2 bg-gray-50">
+          <button
+            onClick={() => setActiveTab('preview')}
+            className={`px-4 py-2 rounded-lg text-sm font-medium transition-all ${
+              activeTab === 'preview'
+                ? 'bg-white text-blue-600 shadow-sm'
+                : 'text-gray-600 hover:text-gray-900'
+            }`}
+          >
+            <Eye className="w-4 h-4 inline mr-2" />
+            Preview
+          </button>
+          <button
+            onClick={() => setActiveTab('images')}
+            className={`px-4 py-2 rounded-lg text-sm font-medium transition-all ${
+              activeTab === 'images'
+                ? 'bg-white text-blue-600 shadow-sm'
+                : 'text-gray-600 hover:text-gray-900'
+            }`}
+          >
+            <ImageIcon className="w-4 h-4 inline mr-2" />
+            Images ({images.length})
+          </button>
+          <button
+            onClick={() => setActiveTab('text')}
+            className={`px-4 py-2 rounded-lg text-sm font-medium transition-all ${
+              activeTab === 'text'
+                ? 'bg-white text-blue-600 shadow-sm'
+                : 'text-gray-600 hover:text-gray-900'
+            }`}
+          >
+            <Type className="w-4 h-4 inline mr-2" />
+            Text ({textNodes.length})
+          </button>
+        </div>
+
+        {/* Content */}
+        <div className="flex-1 overflow-y-auto p-6">
+          {activeTab === 'preview' && (
+            <div className="bg-gray-50 rounded-xl p-4">
+              <iframe
+                srcDoc={editedHtml}
+                className="w-full border-0 bg-white rounded-lg shadow-sm"
+                style={{ minHeight: '500px', height: 'auto' }}
+                title="Preview"
+                sandbox="allow-same-origin"
+              />
+            </div>
+          )}
+
+          {activeTab === 'images' && (
+            <div className="space-y-4">
+              {images.length === 0 ? (
+                <div className="text-center py-12 text-gray-500">
+                  <ImageIcon className="w-12 h-12 mx-auto mb-3 text-gray-400" />
+                  <p>No images found in template</p>
+                </div>
+              ) : (
+                images.map((img, index) => (
+                  <div key={index} className="border border-gray-200 rounded-xl p-4 bg-white hover:shadow-md transition-shadow">
+                    <div className="flex gap-4">
+                      <div className="w-32 h-32 bg-gray-100 rounded-lg overflow-hidden flex-shrink-0">
+                        <img
+                          src={img.src}
+                          alt={img.alt}
+                          className="w-full h-full object-cover"
+                          onError={(e) => {
+                            (e.target as HTMLImageElement).src = 'https://via.placeholder.com/150/e5e7eb/9ca3af?text=Image';
+                          }}
+                        />
+                      </div>
+                      <div className="flex-1 space-y-3">
+                        <div>
+                          <label className="block text-xs font-semibold text-gray-700 mb-1.5">Image URL</label>
+                          <input
+                            type="text"
+                            value={img.src}
+                            onChange={(e) => updateImage(index, e.target.value, img.alt)}
+                            className="w-full px-3 py-2 border border-gray-300 rounded-lg text-sm focus:ring-2 focus:ring-green-500 focus:border-transparent"
+                            placeholder="https://example.com/image.jpg"
+                          />
+                        </div>
+                        <div>
+                          <label className="block text-xs font-semibold text-gray-700 mb-1.5">Alt Text</label>
+                          <input
+                            type="text"
+                            value={img.alt}
+                            onChange={(e) => updateImage(index, img.src, e.target.value)}
+                            className="w-full px-3 py-2 border border-gray-300 rounded-lg text-sm focus:ring-2 focus:ring-green-500 focus:border-transparent"
+                            placeholder="Image description"
+                          />
+                        </div>
+                      </div>
+                    </div>
+                  </div>
+                ))
+              )}
+            </div>
+          )}
+
+          {activeTab === 'text' && (
+            <div className="space-y-3">
+              {textNodes.length === 0 ? (
+                <div className="text-center py-12 text-gray-500">
+                  <Type className="w-12 h-12 mx-auto mb-3 text-gray-400" />
+                  <p>No text content found in template</p>
+                </div>
+              ) : (
+                textNodes.map((node, index) => (
+                  <div key={index} className="border border-gray-200 rounded-lg p-3 bg-white hover:shadow-sm transition-shadow">
+                    <div className="flex items-start justify-between mb-2">
+                      <span className="text-xs font-medium text-gray-500 bg-gray-100 px-2 py-1 rounded">{node.tag}</span>
+                    </div>
+                    <textarea
+                      defaultValue={node.text}
+                      onBlur={(e) => updateText(node.text, e.target.value)}
+                      className="w-full px-3 py-2 border border-gray-300 rounded-lg text-sm focus:ring-2 focus:ring-green-500 focus:border-transparent resize-none"
+                      rows={2}
+                    />
+                  </div>
+                ))
+              )}
+            </div>
+          )}
+        </div>
+
+        {/* Footer */}
+        <div className="px-6 py-4 border-t border-gray-200 flex items-center justify-end gap-3 bg-gray-50">
+          <button
+            onClick={onClose}
+            className="px-5 py-2.5 border border-gray-300 text-gray-700 rounded-lg text-sm font-medium hover:bg-gray-100 transition-colors"
+          >
+            Cancel
+          </button>
+          <button
+            onClick={() => onSave(editedHtml)}
+            className="px-5 py-2.5 bg-gradient-to-r from-green-600 to-emerald-600 text-white rounded-lg text-sm font-medium hover:from-green-700 hover:to-emerald-700 transition-all shadow-sm flex items-center gap-2"
+          >
+            <Save className="w-4 h-4" />
+            Save Changes
+          </button>
+        </div>
+      </div>
     </div>
   );
 }
@@ -159,6 +454,26 @@ export default function EmailBuilder({
       coordinateGetter: sortableKeyboardCoordinates,
     })
   );
+
+  // Load initialHtml when component mounts or when initialHtml changes
+  useEffect(() => {
+    if (initialHtml && initialHtml.trim()) {
+      // Parse HTML and extract content blocks
+      const parser = new DOMParser();
+      const doc = parser.parseFromString(initialHtml, 'text/html');
+
+      // For now, just create one large HTML block with the entire content
+      // This preserves the full HTML structure
+      const newBlock: Block = {
+        id: `block-initial-${Date.now()}`,
+        type: 'html',
+        content: initialHtml,
+      };
+
+      setBlocks([newBlock]);
+      setShowCode(false); // Show preview by default, code only when user clicks "View Code"
+    }
+  }, [initialHtml]);
 
   const deviceWidths = {
     desktop: '100%',
@@ -204,7 +519,19 @@ export default function EmailBuilder({
   };
 
   const generateHtml = () => {
-    const blocksHtml = blocks.map(block => `<div style="padding: 20px;">${block.content}</div>`).join('\n');
+    // If there's only one block of type 'html', return it as-is (preserve uploaded HTML)
+    if (blocks.length === 1 && blocks[0].type === 'html') {
+      return blocks[0].content;
+    }
+
+    // Otherwise, wrap blocks in email template structure
+    const blocksHtml = blocks.map(block => {
+      // Don't wrap html type blocks
+      if (block.type === 'html') {
+        return block.content;
+      }
+      return `<div style="padding: 20px;">${block.content}</div>`;
+    }).join('\n');
 
     return `
 <!DOCTYPE html>

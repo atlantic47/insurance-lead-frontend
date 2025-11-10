@@ -5,6 +5,7 @@
   const WIDGET_CONFIG = {
     apiBaseUrl: window.CHATBOT_CONFIG?.apiUrl || 'http://localhost:3001',
     widgetId: window.CHATBOT_CONFIG?.widgetId || 'default',
+    widgetToken: window.CHATBOT_CONFIG?.widgetToken || null,
     position: window.CHATBOT_CONFIG?.position || 'bottom-right',
     theme: window.CHATBOT_CONFIG?.theme || 'blue',
     greeting: window.CHATBOT_CONFIG?.greeting || 'Hi! How can I help you today?',
@@ -391,6 +392,7 @@
           message: messageText,
           conversationId: conversationId,
           widgetId: WIDGET_CONFIG.widgetId,
+          widgetToken: WIDGET_CONFIG.widgetToken,
           url: window.location.href,
           domain: window.location.hostname
         })
