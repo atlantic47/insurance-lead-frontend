@@ -323,4 +323,51 @@ export const credentialsApi = {
   regenerateWhatsAppWebhook: (id: string) => api.post(`/credentials/whatsapp/${id}/regenerate-webhook`),
 };
 
+export const whatsappApi = {
+  // WhatsApp Templates
+  getTemplates: (params?: { page?: number; limit?: number; status?: string; search?: string }) =>
+    api.get('/whatsapp/templates', { params }),
+  getTemplate: (id: string) => api.get(`/whatsapp/templates/${id}`),
+  createTemplate: (data: {
+    name: string;
+    category: string;
+    language: string;
+    headerFormat?: string;
+    headerText?: string;
+    body: string;
+    footer?: string;
+    buttons?: any[];
+    bodyExamples?: string[];
+    headerExamples?: string[];
+    submitToMeta?: boolean;
+  }) => api.post('/whatsapp/templates', data),
+  updateTemplate: (id: string, data: any) => api.patch(`/whatsapp/templates/${id}`, data),
+  deleteTemplate: (id: string) => api.delete(`/whatsapp/templates/${id}`),
+  submitTemplate: (id: string) => api.post(`/whatsapp/templates/${id}/submit`),
+  resubmitTemplate: (id: string) => api.post(`/whatsapp/templates/${id}/resubmit`),
+  getTemplateStatus: (id: string) => api.get(`/whatsapp/templates/${id}/status`),
+  syncTemplates: () => api.post('/whatsapp/templates/sync'),
+
+  // Send template to conversation
+  sendTemplateToConversation: (conversationId: string, data: {
+    templateName: string;
+    templateParams?: {
+      header?: string | string[];
+      body?: string | string[];
+      buttons?: any[];
+      languageCode?: string;
+    };
+  }) => api.post(`/whatsapp/conversations/${conversationId}/send-template`, data),
+
+  // Conversation Labels
+  addLabelToConversation: (conversationId: string, labelId: string) =>
+    api.post(`/whatsapp/conversation-labels/assign`, { conversationId, labelId }),
+  removeLabelFromConversation: (conversationId: string, labelId: string) =>
+    api.delete(`/whatsapp/conversation-labels/conversations/${conversationId}/labels/${labelId}`),
+  getConversationLabels: (conversationId: string) =>
+    api.get(`/whatsapp/conversation-labels/conversations/${conversationId}`),
+  getAllLabels: () =>
+    api.get('/whatsapp/conversation-labels'),
+};
+
 export default api;

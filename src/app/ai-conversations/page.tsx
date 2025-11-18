@@ -689,7 +689,7 @@ export default function AIConversationsPage() {
                   )}
                   {selectedConversation.lead && (
                     <button
-                      onClick={() => router.push(`/contacts/${selectedConversation.lead.id}`)}
+                      onClick={() => router.push(`/contacts/${selectedConversation.lead?.id}`)}
                       className="w-full px-4 py-2 text-sm bg-blue-100 text-blue-800 rounded-lg hover:bg-blue-200 transition-colors flex items-center justify-center gap-2"
                     >
                       <Info className="w-4 h-4" />
@@ -744,7 +744,7 @@ export default function AIConversationsPage() {
                     <User className="w-4 h-4 text-blue-600" />
                   </div>
                   <div className="ml-3">
-                    <p className="text-sm font-medium text-gray-900">{user?.name || 'You'}</p>
+                    <p className="text-sm font-medium text-gray-900">{user?.firstName && user?.lastName ? `${user.firstName} ${user.lastName}` : 'You'}</p>
                     <p className="text-xs text-gray-500">{user?.email}</p>
                   </div>
                 </div>

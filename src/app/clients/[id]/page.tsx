@@ -30,7 +30,7 @@ export default function ClientDetailPage() {
     queryFn: () => clientsApi.getById(clientId).then(res => res.data),
   });
 
-  const client = clientResponse?.data;
+  const client = clientResponse;
 
   const formatDate = (dateString?: string) => {
     if (!dateString) return 'N/A';
@@ -136,15 +136,7 @@ export default function ClientDetailPage() {
                     <p className="text-sm font-medium text-gray-900">{client.phone || 'N/A'}</p>
                   </div>
                 </div>
-                {client.address && (
-                  <div className="flex items-start col-span-2">
-                    <MapPin className="w-5 h-5 text-gray-400 mr-3 mt-0.5" />
-                    <div>
-                      <p className="text-xs text-gray-500">Address</p>
-                      <p className="text-sm font-medium text-gray-900">{client.address}</p>
-                    </div>
-                  </div>
-                )}
+                {/* Address field removed - not in Client type */}
               </div>
             </div>
 
@@ -198,13 +190,7 @@ export default function ClientDetailPage() {
               </div>
             </div>
 
-            {/* Notes */}
-            {client.notes && (
-              <div className="jira-content-card p-6">
-                <h2 className="text-lg font-semibold text-gray-900 mb-4">Notes</h2>
-                <p className="text-gray-700 whitespace-pre-wrap">{client.notes}</p>
-              </div>
-            )}
+            {/* Notes section removed - notes field not in Client type */}
           </div>
 
           {/* Right Column - Financial Info */}

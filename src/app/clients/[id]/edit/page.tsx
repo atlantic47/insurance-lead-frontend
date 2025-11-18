@@ -42,8 +42,8 @@ export default function EditClientPage() {
   });
 
   useEffect(() => {
-    if (clientResponse?.data) {
-      const client = clientResponse.data;
+    if (clientResponse) {
+      const client = clientResponse;
       setFormData({
         firstName: client.firstName || '',
         lastName: client.lastName || '',
@@ -96,7 +96,7 @@ export default function EditClientPage() {
     );
   }
 
-  if (!clientResponse?.data) {
+  if (!clientResponse) {
     return (
       <DashboardLayout>
         <div className="text-center py-12">

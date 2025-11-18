@@ -172,7 +172,7 @@ export default function AIPage() {
       }]);
       setTestMessage('');
     },
-    onError: (error) => {
+    onError: (error: any) => {
       console.error('❌ AI test API call failed:', error);
       console.error('Error details:', error.response?.data || error.message);
       setTestHistory(prev => [...prev, {

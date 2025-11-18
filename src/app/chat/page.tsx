@@ -1,11 +1,11 @@
 'use client';
 
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useRef } from 'react';
 import { useRouter, useSearchParams } from 'next/navigation';
 import DashboardLayout from '@/components/layout/DashboardLayout';
 import WhatsAppSimulator from '@/components/chat/WhatsAppSimulator';
-import { MessageCircle, Send, Bot, User, Video, Info, Paperclip, Smile, Search, MoreVertical, Phone, Shield, AlertTriangle, ArrowLeft, UserCheck, X } from 'lucide-react';
-import { chatApi } from '@/lib/api';
+import { MessageCircle, Send, Bot, User, Video, Info, Paperclip, Smile, Search, MoreVertical, Phone, Shield, AlertTriangle, ArrowLeft, UserCheck, X, FileText } from 'lucide-react';
+import { chatApi, whatsappApi } from '@/lib/api';
 import { useAuthStore } from '@/store/auth';
 
 interface ChatMessage {
@@ -32,6 +32,26 @@ interface Conversation {
   chatMessages: ChatMessage[];
 }
 
+interface WhatsAppTemplate {
+  id: string;
+  name: string;
+  category: string;
+  language: string;
+  status: string;
+  body: string;
+  headerText?: string;
+  footer?: string;
+  bodyExamples?: string[];
+  headerExamples?: string[];
+}
+
+interface ConversationLabel {
+  id: string;
+  name: string;
+  color: string;
+  description?: string;
+}
+
 export default function ChatPage() {
   const [conversations, setConversations] = useState<Conversation[]>([]);
   const [selectedConversation, setSelectedConversation] = useState<Conversation | null>(null);
@@ -41,7 +61,23 @@ export default function ChatPage() {
   const [searchTerm, setSearchTerm] = useState('');
   const [showLeadInfo, setShowLeadInfo] = useState(false);
   const [leadInfo, setLeadInfo] = useState<any>(null);
-  
+
+  // Template states
+  const [showTemplateModal, setShowTemplateModal] = useState(false);
+  const [templates, setTemplates] = useState<WhatsAppTemplate[]>([]);
+  const [selectedTemplate, setSelectedTemplate] = useState<WhatsAppTemplate | null>(null);
+  const [templateVariables, setTemplateVariables] = useState<{ [key: string]: string }>({});
+  const [isSendingTemplate, setIsSendingTemplate] = useState(false);
+
+  // Label states
+  const [showLabelModal, setShowLabelModal] = useState(false);
+  const [allLabels, setAllLabels] = useState<ConversationLabel[]>([]);
+  const [conversationLabels, setConversationLabels] = useState<ConversationLabel[]>([]);
+  const [isLoadingLabels, setIsLoadingLabels] = useState(false);
+
+  // Ref for auto-scrolling to latest message
+  const messagesEndRef = useRef<HTMLDivElement>(null);
+
   const { user } = useAuthStore();
   const router = useRouter();
   const searchParams = useSearchParams();
@@ -49,15 +85,26 @@ export default function ChatPage() {
 
   useEffect(() => {
     fetchConversations();
-    // Set up polling for real-time updates
-    const interval = setInterval(() => fetchConversations(true), 5000);
+    // Set up polling for real-time updates (every 2 seconds for faster updates)
+    const interval = setInterval(() => fetchConversations(true), 2000);
     return () => clearInterval(interval);
   }, []);
+
+  // Auto-scroll to bottom when messages change or conversation is selected
+  useEffect(() => {
+    scrollToBottom();
+  }, [selectedConversation?.chatMessages]);
+
+  const scrollToBottom = () => {
+    messagesEndRef.current?.scrollIntoView({ behavior: 'smooth' });
+  };
 
   const selectConversation = (conversation: Conversation) => {
     setSelectedConversation(conversation);
     // Update URL with conversation ID
     router.replace(`/chat?conversation=${conversation.id}`, { scroll: false });
+    // Load conversation labels
+    fetchConversationLabels(conversation.id);
   };
 
   const fetchConversations = async (isPolling = false) => {
@@ -65,12 +112,12 @@ export default function ChatPage() {
       if (!isPolling) {
         setIsLoading(true);
       }
-      const response = await chatApi.getConversations({ 
+      const response = await chatApi.getConversations({
         limit: 50,
-        page: 1 
+        page: 1
       });
-      
-      const conversationsData = response.data.data?.conversations || response.data.conversations || [];
+
+      const conversationsData = (response.data.data as any)?.conversations || (response.data as any).conversations || [];
       
       // Sort conversations by latest message time to maintain consistent order
       const sortedConversations = conversationsData.sort((a: Conversation, b: Conversation) => {
@@ -200,7 +247,7 @@ export default function ChatPage() {
       // Fetch lead info from WhatsApp conversation endpoint
       const response = await fetch(`http://localhost:3001/whatsapp/conversation/${conversation.id}/lead`);
       const data = await response.json();
-      
+
       if (data.lead) {
         setLeadInfo(data.lead);
         setShowLeadInfo(true);
@@ -210,6 +257,173 @@ export default function ChatPage() {
     } catch (error) {
       console.error('Error fetching lead info:', error);
       alert('Failed to fetch lead information');
+    }
+  };
+
+  const fetchTemplates = async () => {
+    try {
+      const response = await whatsappApi.getTemplates({ status: 'APPROVED' });
+      const templatesData = response.data?.data?.templates || response.data?.templates || [];
+      setTemplates(templatesData);
+    } catch (error) {
+      console.error('Error fetching templates:', error);
+    }
+  };
+
+  const openTemplateModal = async () => {
+    setShowTemplateModal(true);
+    if (templates.length === 0) {
+      await fetchTemplates();
+    }
+  };
+
+  const extractVariablesFromTemplate = (template: WhatsAppTemplate): string[] => {
+    const variables: string[] = [];
+
+    // Extract from body
+    const bodyMatches = template.body.match(/\{\{(\d+)\}\}/g);
+    if (bodyMatches) {
+      bodyMatches.forEach(match => {
+        const num = match.match(/\d+/)?.[0];
+        if (num) variables.push(`body_${num}`);
+      });
+    }
+
+    // Extract from header if exists
+    if (template.headerText) {
+      const headerMatches = template.headerText.match(/\{\{(\d+)\}\}/g);
+      if (headerMatches) {
+        headerMatches.forEach(match => {
+          const num = match.match(/\d+/)?.[0];
+          if (num) variables.push(`header_${num}`);
+        });
+      }
+    }
+
+    return variables;
+  };
+
+  const selectTemplate = (template: WhatsAppTemplate) => {
+    setSelectedTemplate(template);
+
+    // Extract variables and initialize state
+    const vars = extractVariablesFromTemplate(template);
+    const initialVars: { [key: string]: string } = {};
+    vars.forEach(v => initialVars[v] = '');
+    setTemplateVariables(initialVars);
+  };
+
+  const sendTemplate = async () => {
+    if (!selectedTemplate || !selectedConversation) return;
+
+    setIsSendingTemplate(true);
+    try {
+      // Build template params
+      const bodyParams: string[] = [];
+      const headerParams: string[] = [];
+
+      Object.keys(templateVariables).forEach(key => {
+        if (key.startsWith('body_')) {
+          const index = parseInt(key.split('_')[1]) - 1;
+          bodyParams[index] = templateVariables[key];
+        } else if (key.startsWith('header_')) {
+          const index = parseInt(key.split('_')[1]) - 1;
+          headerParams[index] = templateVariables[key];
+        }
+      });
+
+      const templateParams: any = {
+        languageCode: selectedTemplate.language || 'en',
+      };
+
+      if (bodyParams.length > 0) {
+        templateParams.body = bodyParams;
+      }
+      if (headerParams.length > 0) {
+        templateParams.header = headerParams;
+      }
+
+      await whatsappApi.sendTemplateToConversation(selectedConversation.id, {
+        templateName: selectedTemplate.name,
+        templateParams: Object.keys(templateParams).length > 1 ? templateParams : undefined,
+      });
+
+      // Close modal and refresh conversations
+      setShowTemplateModal(false);
+      setSelectedTemplate(null);
+      setTemplateVariables({});
+      await fetchConversations();
+
+      alert('Template sent successfully!');
+    } catch (error) {
+      console.error('Error sending template:', error);
+      alert('Failed to send template. Please try again.');
+    } finally {
+      setIsSendingTemplate(false);
+    }
+  };
+
+  const fetchAllLabels = async () => {
+    try {
+      const response = await whatsappApi.getAllLabels();
+      // The service returns the labels directly (no nested data)
+      const labelsData = Array.isArray(response.data) ? response.data : (response.data?.data || response.data || []);
+      setAllLabels(labelsData);
+    } catch (error) {
+      console.error('Error fetching labels:', error);
+    }
+  };
+
+  const fetchConversationLabels = async (conversationId: string) => {
+    try {
+      setIsLoadingLabels(true);
+      const response = await whatsappApi.getConversationLabels(conversationId);
+      // The service returns an array of assignments with nested label objects
+      const assignments = response.data?.data || response.data || [];
+      // Extract just the label objects from the assignments
+      const labelsData = assignments.map((assignment: any) => assignment.label || assignment);
+      setConversationLabels(labelsData);
+    } catch (error) {
+      console.error('Error fetching conversation labels:', error);
+      setConversationLabels([]);
+    } finally {
+      setIsLoadingLabels(false);
+    }
+  };
+
+  const openLabelModal = async () => {
+    if (!selectedConversation) return;
+    setShowLabelModal(true);
+    if (allLabels.length === 0) {
+      await fetchAllLabels();
+    }
+    await fetchConversationLabels(selectedConversation.id);
+  };
+
+  const addLabel = async (labelId: string) => {
+    if (!selectedConversation) return;
+
+    try {
+      const response = await whatsappApi.addLabelToConversation(selectedConversation.id, labelId);
+      console.log('Label added:', response);
+      await fetchConversationLabels(selectedConversation.id);
+    } catch (error: any) {
+      console.error('Error adding label:', error);
+      const errorMessage = error.response?.data?.message || error.message || 'Failed to add label. Please try again.';
+      alert(errorMessage);
+    }
+  };
+
+  const removeLabel = async (labelId: string) => {
+    if (!selectedConversation) return;
+
+    try {
+      await whatsappApi.removeLabelFromConversation(selectedConversation.id, labelId);
+      await fetchConversationLabels(selectedConversation.id);
+    } catch (error: any) {
+      console.error('Error removing label:', error);
+      const errorMessage = error.response?.data?.message || error.message || 'Failed to remove label. Please try again.';
+      alert(errorMessage);
     }
   };
 
@@ -460,6 +674,8 @@ export default function ChatPage() {
                       </div>
                     </div>
                   ))}
+                  {/* Auto-scroll anchor */}
+                  <div ref={messagesEndRef} />
                 </div>
 
                 {/* Message Input */}
@@ -468,6 +684,13 @@ export default function ChatPage() {
                     <div className="flex items-center space-x-3">
                       <button className="p-2 hover:bg-gray-100 rounded-lg">
                         <Paperclip className="h-5 w-5 text-gray-600" />
+                      </button>
+                      <button
+                        onClick={openTemplateModal}
+                        className="p-2 hover:bg-gray-100 rounded-lg"
+                        title="Send WhatsApp Template"
+                      >
+                        <FileText className="h-5 w-5 text-gray-600" />
                       </button>
                       <div className="flex-1 relative">
                         <input
@@ -483,7 +706,7 @@ export default function ChatPage() {
                         <button className="p-2 hover:bg-gray-100 rounded-lg">
                           <Smile className="h-5 w-5 text-gray-600" />
                         </button>
-                        <button 
+                        <button
                           onClick={sendMessage}
                           disabled={!newMessage.trim() || isSending}
                           className="bg-green-500 hover:bg-green-600 disabled:bg-gray-400 text-white px-4 py-2 rounded-full font-medium transition-colors"
@@ -581,7 +804,7 @@ export default function ChatPage() {
                     <User className="w-4 h-4 text-blue-600" />
                   </div>
                   <div className="ml-3">
-                    <p className="text-sm font-medium text-gray-900">{user?.name || 'Not Assigned'}</p>
+                    <p className="text-sm font-medium text-gray-900">{user?.firstName && user?.lastName ? `${user.firstName} ${user.lastName}` : 'Not Assigned'}</p>
                     <p className="text-xs text-gray-500">{user?.email}</p>
                   </div>
                 </div>
@@ -630,7 +853,29 @@ export default function ChatPage() {
                   <span className="px-2 py-1 text-xs bg-purple-100 text-purple-700 rounded-full">
                     {selectedConversation.lead.status.toLowerCase()}
                   </span>
-                  <button className="px-2 py-1 text-xs bg-gray-100 text-gray-600 rounded-full hover:bg-gray-200">
+                  {conversationLabels.map((label) => (
+                    <span
+                      key={label.id}
+                      className="px-2 py-1 text-xs rounded-full flex items-center gap-1"
+                      style={{
+                        backgroundColor: `${label.color}20`,
+                        color: label.color,
+                      }}
+                    >
+                      {label.name}
+                      <button
+                        onClick={() => removeLabel(label.id)}
+                        className="hover:opacity-70"
+                        title="Remove label"
+                      >
+                        <X className="w-3 h-3" />
+                      </button>
+                    </span>
+                  ))}
+                  <button
+                    onClick={openLabelModal}
+                    className="px-2 py-1 text-xs bg-gray-100 text-gray-600 rounded-full hover:bg-gray-200"
+                  >
                     + Add Label
                   </button>
                 </div>
@@ -648,6 +893,138 @@ export default function ChatPage() {
           )}
         </div>
         
+        {/* Template Selection Modal */}
+        {showTemplateModal && (
+          <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50">
+            <div className="bg-white rounded-lg shadow-xl max-w-3xl w-full mx-4 max-h-[90vh] overflow-y-auto">
+              <div className="flex items-center justify-between p-6 border-b border-gray-200">
+                <h2 className="text-xl font-semibold text-gray-900 flex items-center">
+                  <FileText className="w-6 h-6 text-green-600 mr-2" />
+                  Send WhatsApp Template
+                </h2>
+                <button
+                  onClick={() => {
+                    setShowTemplateModal(false);
+                    setSelectedTemplate(null);
+                    setTemplateVariables({});
+                  }}
+                  className="p-2 hover:bg-gray-100 rounded-lg"
+                >
+                  <X className="w-5 h-5 text-gray-500" />
+                </button>
+              </div>
+
+              <div className="p-6">
+                {!selectedTemplate ? (
+                  // Template List
+                  <div>
+                    <p className="text-sm text-gray-600 mb-4">
+                      Select a template to send to the customer
+                    </p>
+                    <div className="space-y-3 max-h-96 overflow-y-auto">
+                      {templates.length === 0 ? (
+                        <p className="text-center text-gray-500 py-8">
+                          No approved templates found
+                        </p>
+                      ) : (
+                        templates.map((template) => (
+                          <div
+                            key={template.id}
+                            onClick={() => selectTemplate(template)}
+                            className="border border-gray-200 rounded-lg p-4 hover:border-green-500 hover:bg-green-50 cursor-pointer transition-colors"
+                          >
+                            <div className="flex items-center justify-between mb-2">
+                              <h3 className="font-medium text-gray-900">{template.name}</h3>
+                              <span className="text-xs px-2 py-1 bg-green-100 text-green-800 rounded-full">
+                                {template.status}
+                              </span>
+                            </div>
+                            <p className="text-sm text-gray-600 mb-2">{template.body}</p>
+                            {template.footer && (
+                              <p className="text-xs text-gray-500 italic">{template.footer}</p>
+                            )}
+                          </div>
+                        ))
+                      )}
+                    </div>
+                  </div>
+                ) : (
+                  // Template Variables Form
+                  <div>
+                    <button
+                      onClick={() => {
+                        setSelectedTemplate(null);
+                        setTemplateVariables({});
+                      }}
+                      className="text-sm text-gray-600 hover:text-gray-900 mb-4 flex items-center"
+                    >
+                      <ArrowLeft className="w-4 h-4 mr-1" />
+                      Back to templates
+                    </button>
+
+                    <div className="bg-gray-50 rounded-lg p-4 mb-4">
+                      <h3 className="font-medium text-gray-900 mb-2">{selectedTemplate.name}</h3>
+                      {selectedTemplate.headerText && (
+                        <p className="text-sm text-gray-700 mb-2 font-medium">{selectedTemplate.headerText}</p>
+                      )}
+                      <p className="text-sm text-gray-700 mb-2">{selectedTemplate.body}</p>
+                      {selectedTemplate.footer && (
+                        <p className="text-xs text-gray-500 italic">{selectedTemplate.footer}</p>
+                      )}
+                    </div>
+
+                    {Object.keys(templateVariables).length > 0 ? (
+                      <div className="space-y-3 mb-4">
+                        <p className="text-sm font-medium text-gray-700">Fill in the template variables:</p>
+                        {Object.keys(templateVariables).map((varKey) => (
+                          <div key={varKey}>
+                            <label className="block text-sm font-medium text-gray-700 mb-1">
+                              {varKey.replace('_', ' ').toUpperCase()}
+                            </label>
+                            <input
+                              type="text"
+                              value={templateVariables[varKey]}
+                              onChange={(e) =>
+                                setTemplateVariables({ ...templateVariables, [varKey]: e.target.value })
+                              }
+                              className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-green-500"
+                              placeholder={`Enter ${varKey.replace('_', ' ')}`}
+                            />
+                          </div>
+                        ))}
+                      </div>
+                    ) : (
+                      <p className="text-sm text-gray-600 mb-4">
+                        This template has no variables. Click send to deliver it.
+                      </p>
+                    )}
+
+                    <div className="flex justify-end space-x-3">
+                      <button
+                        onClick={() => {
+                          setShowTemplateModal(false);
+                          setSelectedTemplate(null);
+                          setTemplateVariables({});
+                        }}
+                        className="px-4 py-2 bg-gray-100 text-gray-700 rounded-lg hover:bg-gray-200 transition-colors"
+                      >
+                        Cancel
+                      </button>
+                      <button
+                        onClick={sendTemplate}
+                        disabled={isSendingTemplate || Object.values(templateVariables).some(v => !v.trim())}
+                        className="px-4 py-2 bg-green-500 text-white rounded-lg hover:bg-green-600 disabled:bg-gray-400 transition-colors"
+                      >
+                        {isSendingTemplate ? 'Sending...' : 'Send Template'}
+                      </button>
+                    </div>
+                  </div>
+                )}
+              </div>
+            </div>
+          </div>
+        )}
+
         {/* Lead Information Modal */}
         {showLeadInfo && leadInfo && (
           <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50">
@@ -762,6 +1139,87 @@ export default function ChatPage() {
               <div className="flex justify-end p-6 border-t border-gray-200">
                 <button
                   onClick={() => setShowLeadInfo(false)}
+                  className="px-4 py-2 bg-gray-100 text-gray-700 rounded-lg hover:bg-gray-200 transition-colors"
+                >
+                  Close
+                </button>
+              </div>
+            </div>
+          </div>
+        )}
+
+        {/* Label Selection Modal */}
+        {showLabelModal && (
+          <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50">
+            <div className="bg-white rounded-lg shadow-xl max-w-md w-full mx-4 max-h-[80vh] overflow-y-auto">
+              <div className="flex items-center justify-between p-6 border-b border-gray-200">
+                <h2 className="text-xl font-semibold text-gray-900">Manage Labels</h2>
+                <button
+                  onClick={() => setShowLabelModal(false)}
+                  className="p-2 hover:bg-gray-100 rounded-lg"
+                >
+                  <X className="w-5 h-5 text-gray-500" />
+                </button>
+              </div>
+
+              <div className="p-6">
+                {isLoadingLabels ? (
+                  <div className="flex justify-center py-8">
+                    <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-green-500"></div>
+                  </div>
+                ) : (
+                  <div>
+                    <p className="text-sm text-gray-600 mb-4">
+                      Select labels to add to this conversation
+                    </p>
+
+                    {allLabels.length === 0 ? (
+                      <p className="text-center text-gray-500 py-8">
+                        No labels available. Create labels first.
+                      </p>
+                    ) : (
+                      <div className="space-y-2">
+                        {allLabels.map((label) => {
+                          const isAssigned = conversationLabels.some(cl => cl.id === label.id);
+                          return (
+                            <div
+                              key={label.id}
+                              className="flex items-center justify-between p-3 border border-gray-200 rounded-lg hover:bg-gray-50"
+                            >
+                              <div className="flex items-center space-x-3">
+                                <div
+                                  className="w-4 h-4 rounded-full"
+                                  style={{ backgroundColor: label.color }}
+                                />
+                                <div>
+                                  <p className="text-sm font-medium text-gray-900">{label.name}</p>
+                                  {label.description && (
+                                    <p className="text-xs text-gray-500">{label.description}</p>
+                                  )}
+                                </div>
+                              </div>
+                              <button
+                                onClick={() => isAssigned ? removeLabel(label.id) : addLabel(label.id)}
+                                className={`px-3 py-1 text-xs rounded-full transition-colors ${
+                                  isAssigned
+                                    ? 'bg-red-100 text-red-800 hover:bg-red-200'
+                                    : 'bg-green-100 text-green-800 hover:bg-green-200'
+                                }`}
+                              >
+                                {isAssigned ? 'Remove' : 'Add'}
+                              </button>
+                            </div>
+                          );
+                        })}
+                      </div>
+                    )}
+                  </div>
+                )}
+              </div>
+
+              <div className="flex justify-end p-6 border-t border-gray-200">
+                <button
+                  onClick={() => setShowLabelModal(false)}
                   className="px-4 py-2 bg-gray-100 text-gray-700 rounded-lg hover:bg-gray-200 transition-colors"
                 >
                   Close

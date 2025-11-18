@@ -17,6 +17,10 @@ import {
   UsersRound,
   Megaphone,
   Globe,
+  Zap,
+  Tag,
+  Send,
+  FileText,
 } from 'lucide-react';
 import { useAuthStore } from '@/store/auth';
 import { UserRole } from '@/types';
@@ -36,6 +40,14 @@ const navigation = [
   { name: 'Clients', href: '/clients', icon: UserCheck, badge: null },
   { name: 'AI Assistant', href: '/ai', icon: Bot, badge: null },
   { name: 'Reports', href: '/reports', icon: BarChart3, badge: null },
+];
+
+// WhatsApp Automation Section
+const whatsappNavigation = [
+  { name: 'WhatsApp Templates', href: '/whatsapp/templates', icon: FileText },
+  { name: 'WA Campaigns', href: '/whatsapp/campaigns', icon: Send },
+  { name: 'Conversation Labels', href: '/whatsapp/labels', icon: Tag },
+  { name: 'Automation Rules', href: '/whatsapp/automation', icon: Zap },
 ];
 
 const adminNavigation = [
@@ -101,6 +113,40 @@ export default function Sidebar() {
             })}
           </div>
 
+          {/* WhatsApp Automation Section */}
+          <div className="mt-6">
+            {!isCollapsed && (
+              <div className="px-4 mb-2">
+                <h3 className="text-xs font-semibold text-gray-500 uppercase tracking-wider">
+                  WhatsApp Automation
+                </h3>
+              </div>
+            )}
+
+            <div>
+              {whatsappNavigation.map((item) => {
+                const isActive = pathname === item.href;
+                return (
+                  <Link
+                    key={item.name}
+                    href={item.href}
+                    className={cn(
+                      'jira-nav-item relative',
+                      isActive && 'active'
+                    )}
+                    title={isCollapsed ? item.name : undefined}
+                  >
+                    <item.icon className="flex-shrink-0 w-4 h-4 mr-3" />
+
+                    {!isCollapsed && (
+                      <span className="truncate">{item.name}</span>
+                    )}
+                  </Link>
+                );
+              })}
+            </div>
+          </div>
+
           {/* Admin Section */}
           {(user?.role === UserRole.ADMIN || user?.role === UserRole.MANAGER) && (
             <div className="mt-6">
@@ -111,7 +157,7 @@ export default function Sidebar() {
                   </h3>
                 </div>
               )}
-              
+
               <div>
                 {adminNavigation.map((item) => {
                   const isActive = pathname === item.href;
@@ -126,7 +172,7 @@ export default function Sidebar() {
                       title={isCollapsed ? item.name : undefined}
                     >
                       <item.icon className="flex-shrink-0 w-4 h-4 mr-3" />
-                      
+
                       {!isCollapsed && (
                         <span className="truncate">{item.name}</span>
                       )}

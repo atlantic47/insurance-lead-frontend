@@ -91,21 +91,26 @@ export default function EditLeadModal({ lead, isOpen, onClose, onSubmit, isLoadi
     e.preventDefault();
     if (!lead) return;
 
+    // Helper function to clean string values (remove escaped quotes and extra whitespace)
+    const cleanString = (str: string) => {
+      return str.replace(/\\"/g, '"').replace(/\\\\/g, '\\').trim();
+    };
+
     // Clean up the data - remove empty strings and only send valid values
     const submitData: any = {
-      firstName: formData.firstName,
-      lastName: formData.lastName,
-      email: formData.email || undefined,
+      firstName: cleanString(formData.firstName),
+      lastName: cleanString(formData.lastName),
+      email: formData.email ? cleanString(formData.email) : undefined,
       phone: formData.phone || undefined,
       insuranceType: formData.insuranceType,
       source: formData.source,
       status: formData.status,
-      city: formData.city || undefined,
-      state: formData.state || undefined,
+      city: formData.city ? cleanString(formData.city) : undefined,
+      state: formData.state ? cleanString(formData.state) : undefined,
       zipCode: formData.zipCode || undefined,
       budget: formData.budget ? parseFloat(formData.budget) : undefined,
       urgency: parseInt(formData.urgency) || 1,
-      inquiryDetails: formData.inquiryDetails || undefined,
+      inquiryDetails: formData.inquiryDetails ? cleanString(formData.inquiryDetails) : undefined,
       expectedCloseDate: formData.expectedCloseDate
         ? new Date(formData.expectedCloseDate).toISOString()
         : undefined,
